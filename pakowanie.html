@@ -1,0 +1,991 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pakowanie 3D — optymalne układanie produktów w kartonie</title>
+<style>
+  :root {
+    --bg: #F4F6F8;
+    --panel: #FFFFFF;
+    --ink: #1B2631;
+    --muted: #5B6B7B;
+    --line: #D9E0E6;
+    --accent: #2F6FB5;
+    --ok: #2E7D52;
+    --warn: #B4562B;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.5 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  }
+  header {
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    padding: 18px 24px;
+  }
+  header h1 { margin: 0; font-size: 19px; }
+  header p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+  main {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 20px 24px 60px;
+    display: grid;
+    grid-template-columns: minmax(380px, 460px) 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  @media (max-width: 1080px) { main { grid-template-columns: 1fr; } }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    margin: 0 0 12px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  input[type=number], input[type=text] {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font: inherit;
+    background: #fff;
+    color: var(--ink);
+  }
+  input[type=number]:focus, input[type=text]:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+    border-color: var(--accent);
+  }
+  input[type=color] {
+    width: 34px; height: 30px; padding: 2px; border: 1px solid var(--line);
+    border-radius: 6px; background: #fff; cursor: pointer;
+  }
+  .row3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+
+  table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.grid th {
+    text-align: left; font-size: 11px; color: var(--muted); font-weight: 600;
+    padding: 0 4px 6px; text-transform: uppercase; letter-spacing: .04em;
+  }
+  table.grid td { padding: 3px 2px; vertical-align: middle; }
+  table.grid input[type=number], table.grid input[type=text] {
+    padding: 5px 4px; font-size: 12.5px;
+  }
+
+  button {
+    font: inherit; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    padding: 7px 12px;
+  }
+  button:hover { background: #F0F3F6; }
+  button.primary {
+    background: var(--accent); border-color: var(--accent); color: #fff;
+    font-weight: 600; padding: 10px 18px;
+  }
+  button.primary:hover { background: #27598F; }
+  button.link {
+    border: none; background: none; color: var(--accent); padding: 2px 4px;
+    text-decoration: underline;
+  }
+  button.del {
+    border: none; background: none; color: var(--warn); font-size: 17px;
+    line-height: 1; padding: 2px 6px;
+  }
+  .actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
+  .stat { background: #F7F9FB; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stat .v { font-size: 22px; font-weight: 650; letter-spacing: -.01em; }
+  .stat .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+  .legend button {
+    display: flex; align-items: center; gap: 7px; font-size: 12px; padding: 5px 10px;
+  }
+  .legend button[aria-pressed="false"] { opacity: .38; }
+  .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,.35); }
+
+  #stage { width: 100%; height: 560px; display: block; cursor: grab; touch-action: none; }
+  #stage.dragging { cursor: grabbing; }
+  .viewbar {
+    display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+    margin-top: 10px; font-size: 12px; color: var(--muted);
+  }
+  .viewbar input[type=range] { width: 150px; vertical-align: middle; }
+
+  .scroll { max-height: 330px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table.data { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.data th {
+    position: sticky; top: 0; background: #F7F9FB; text-align: left; font-weight: 600;
+    font-size: 11px; color: var(--muted); padding: 7px 10px; border-bottom: 1px solid var(--line);
+    text-transform: uppercase; letter-spacing: .04em;
+  }
+  table.data td { padding: 5px 10px; border-bottom: 1px solid #EEF2F5; }
+  table.data td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.data tr:last-child td { border-bottom: none; }
+  .dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 7px; }
+
+  .note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+  .ok { color: var(--ok); font-weight: 600; }
+  .bad { color: var(--warn); font-weight: 600; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Pakowanie 3D — optymalne układanie produktów w kartonie</h1>
+  <p>Działa offline w przeglądarce. Nie wymaga instalacji Pythona ani żadnych dodatków.</p>
+</header>
+
+<main>
+  <!-- ================= LEWA KOLUMNA: DANE WEJŚCIOWE ================= -->
+  <div>
+    <div class="card">
+      <h2>Karton</h2>
+      <div class="row3">
+        <div><label for="cL">długość [cm]</label><input type="number" id="cL" value="40" min="1" step="0.1"></div>
+        <div><label for="cW">szerokość [cm]</label><input type="number" id="cW" value="40" min="1" step="0.1"></div>
+        <div><label for="cH">wysokość [cm]</label><input type="number" id="cH" value="60" min="1" step="0.1"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Produkty</h2>
+      <table class="grid">
+        <thead>
+          <tr>
+            <th style="width:26px"></th>
+            <th>nazwa</th>
+            <th style="width:50px">dł.</th>
+            <th style="width:50px">szer.</th>
+            <th style="width:50px">wys.</th>
+            <th style="width:50px">szt.</th>
+            <th style="width:42px" title="czy produkt można obracać">obrót</th>
+            <th style="width:24px"></th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="actions">
+        <button type="button" id="addRow">+ dodaj produkt</button>
+        <button type="button" class="link" id="loadExample">wczytaj przykład</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Ustawienia algorytmu</h2>
+      <label for="support">Wymagane podparcie podstawy: <b id="supportVal">70%</b></label>
+      <input type="range" id="support" min="0" max="100" step="5" value="70" style="width:100%">
+      <p class="note">
+        Ile procent spodu produktu musi opierać się na dnie kartonu albo na innym
+        produkcie. Wyższa wartość = układ bardziej realny do ułożenia ręcznie,
+        niższa = algorytm może upchnąć więcej sztuk w szczelinach.
+      </p>
+      <div class="actions">
+        <button type="button" class="primary" id="run">Pakuj</button>
+        <span id="timing" class="note" style="margin:0"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= PRAWA KOLUMNA: WYNIK ================= -->
+  <div>
+    <div class="card">
+      <h2>Podsumowanie</h2>
+      <div class="stats" id="stats"></div>
+      <p class="note" id="validation"></p>
+      <div class="legend" id="legend"></div>
+    </div>
+
+    <div class="card">
+      <h2>Wizualizacja 3D</h2>
+      <canvas id="stage"></canvas>
+      <div class="viewbar">
+        <span>przeciągnij myszką, aby obrócić · kółko myszy = przybliżenie</span>
+        <span>|</span>
+        <label style="display:inline; margin:0" for="cut">przekrój do wysokości:
+          <input type="range" id="cut" min="0" max="100" value="100">
+          <b id="cutVal">cała</b>
+        </label>
+        <button type="button" id="resetView">wyśrodkuj widok</button>
+        <button type="button" id="savePng">zapisz PNG</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Co się zmieściło</h2>
+      <div class="scroll">
+        <table class="data">
+          <thead>
+            <tr>
+              <th>#</th><th>produkt</th>
+              <th class="num">X</th><th class="num">Y</th><th class="num">Z</th>
+              <th>wymiary po obrocie</th><th>orientacja</th>
+            </tr>
+          </thead>
+          <tbody id="placed"></tbody>
+        </table>
+      </div>
+      <p class="note">
+        Pozycja to współrzędne lewego-przedniego-dolnego narożnika produktu (w cm).
+        Orientacja mówi, która <b>oryginalna</b> krawędź leży wzdłuż osi X, Y i Z:
+        D = długość, S = szerokość, W = wysokość. Czyli <code>DSW</code> to ustawienie
+        oryginalne, a <code>SDW</code> to obrót o 90° wokół pionu.
+      </p>
+    </div>
+
+    <div class="card" id="leftoverCard">
+      <h2>Co się nie zmieściło</h2>
+      <div id="leftover"></div>
+    </div>
+  </div>
+</main>
+
+<script>
+"use strict";
+
+/* =========================================================================
+   CZĘŚĆ 1 — ALGORYTM PAKOWANIA
+   Heurystyka "punktów ekstremalnych" (Extreme Points; Crainic, Perron & Toth
+   2008) z wyborem najlepszego miejsca i przeszukiwaniem wielostartowym.
+   Odpowiednik pliku packing.py w wersji pythonowej.
+
+   Układ współrzędnych: x = długość kartonu, y = szerokość, z = wysokość.
+   Punkt (0,0,0) to lewy-przedni-dolny narożnik kartonu.
+   ========================================================================= */
+
+const EPS = 1e-9;
+const AXIS_LABELS = ["D", "S", "W"];   // długość, szerokość, wysokość produktu
+
+/* Wszystkie dopuszczalne orientacje produktu.
+   Bez obrotu -> jedna. Z obrotem -> 6 permutacji wymiarów, z pominięciem
+   powtórzeń (np. sześcian ma tylko jedną unikalną orientację).            */
+function orientationsOf(product) {
+  const d = [product.length, product.width, product.height];
+  if (!product.rotatable) {
+    return [{ dx: d[0], dy: d[1], dz: d[2], label: "DSW (bez obrotu)" }];
+  }
+  const perms = [[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  const seen = new Map();
+  for (const p of perms) {
+    const key = d[p[0]] + "|" + d[p[1]] + "|" + d[p[2]];
+    if (!seen.has(key)) {
+      seen.set(key, {
+        dx: d[p[0]], dy: d[p[1]], dz: d[p[2]],
+        label: p.map(i => AXIS_LABELS[i]).join(""),
+      });
+    }
+  }
+  return [...seen.values()];
+}
+
+class Packer {
+  /* container   – {length, width, height}
+     supportRatio – minimalny ułamek podstawy, który musi być podparty
+     scoreMode    – 'dblf' (buduj warstwami od dna) albo 'contact' (maksymalny styk) */
+  constructor(container, supportRatio, scoreMode) {
+    this.c = container;
+    this.supportRatio = supportRatio;
+    this.scoreMode = scoreMode;
+  }
+
+  /* Czy produkt zmieści się w kartonie i nie przetnie żadnego z już ułożonych? */
+  fits(pt, o, placed) {
+    const [x, y, z] = pt;
+    if (x < -EPS || y < -EPS || z < -EPS) return false;
+    if (x + o.dx > this.c.length + EPS) return false;
+    if (y + o.dy > this.c.width + EPS) return false;
+    if (z + o.dz > this.c.height + EPS) return false;
+    const x2 = x + o.dx, y2 = y + o.dy, z2 = z + o.dz;
+    for (const q of placed) {
+      // kolizja tylko wtedy, gdy przedziały nachodzą na WSZYSTKICH trzech osiach
+      if (q.x < x2 - EPS && x < q.x + q.dx - EPS &&
+          q.y < y2 - EPS && y < q.y + q.dy - EPS &&
+          q.z < z2 - EPS && z < q.z + q.dz - EPS) return false;
+    }
+    return true;
+  }
+
+  /* Czy spód produktu ma wystarczające podparcie (dno kartonu lub inne produkty)? */
+  supported(pt, o, placed) {
+    const [x, y, z] = pt;
+    if (z <= EPS) return true;                    // stoi na dnie kartonu
+    const baseArea = o.dx * o.dy;
+    let sup = 0;
+    for (const q of placed) {
+      if (Math.abs(q.z + q.dz - z) > 1e-6) continue;   // górna ścianka q nie jest na poziomie z
+      const ox = Math.min(x + o.dx, q.x + q.dx) - Math.max(x, q.x);
+      const oy = Math.min(y + o.dy, q.y + q.dy) - Math.max(y, q.y);
+      if (ox > EPS && oy > EPS) sup += ox * oy;
+    }
+    const ratio = baseArea ? sup / baseArea : 0;
+    // nawet przy podparciu 0% wymagamy jakiegokolwiek kontaktu z podłożem
+    return ratio >= Math.max(this.supportRatio, EPS);
+  }
+
+  /* Pole ścianek stykających się z kartonem i z innymi produktami.
+     Im większe, tym ciaśniej produkt wpasował się w lukę.               */
+  contactArea(pt, o, placed) {
+    const [x, y, z] = pt;
+    const x2 = x + o.dx, y2 = y + o.dy, z2 = z + o.dz;
+    let a = 0;
+    if (x <= EPS) a += o.dy * o.dz;
+    if (Math.abs(x2 - this.c.length) <= EPS) a += o.dy * o.dz;
+    if (y <= EPS) a += o.dx * o.dz;
+    if (Math.abs(y2 - this.c.width) <= EPS) a += o.dx * o.dz;
+    if (z <= EPS) a += o.dx * o.dy;
+    if (Math.abs(z2 - this.c.height) <= EPS) a += o.dx * o.dy;
+
+    for (const q of placed) {
+      const qx2 = q.x + q.dx, qy2 = q.y + q.dy, qz2 = q.z + q.dz;
+      const ox = Math.min(x2, qx2) - Math.max(x, q.x);
+      const oy = Math.min(y2, qy2) - Math.max(y, q.y);
+      const oz = Math.min(z2, qz2) - Math.max(z, q.z);
+      if (Math.abs(x2 - q.x) <= EPS || Math.abs(qx2 - x) <= EPS) {
+        if (oy > EPS && oz > EPS) a += oy * oz;
+      }
+      if (Math.abs(y2 - q.y) <= EPS || Math.abs(qy2 - y) <= EPS) {
+        if (ox > EPS && oz > EPS) a += ox * oz;
+      }
+      if (Math.abs(z2 - q.z) <= EPS || Math.abs(qz2 - z) <= EPS) {
+        if (ox > EPS && oy > EPS) a += ox * oy;
+      }
+    }
+    return a;
+  }
+
+  /* Ocena miejsca jako tablica liczb porównywana leksykograficznie.
+     Mniejsza wartość = lepsze miejsce.                                  */
+  score(pt, o, placed) {
+    const contact = this.contactArea(pt, o, placed);
+    if (this.scoreMode === "contact") return [-contact, pt[2], pt[1], pt[0]];
+    return [pt[2], pt[1], pt[0], -contact];
+  }
+
+  /* Rzutuje punkt wstecz wzdłuż osi (0=X, 1=Y, 2=Z): punkt "spada" w stronę
+     początku układu, aż natrafi na ściankę produktu albo na ściankę kartonu. */
+  project(pt, axis, placed) {
+    const p = pt.slice();
+    const other = [0, 1, 2].filter(i => i !== axis);
+    const [a, b] = other;
+    let best = 0;
+    for (const q of placed) {
+      const lo = [q.x, q.y, q.z];
+      const hi = [q.x + q.dx, q.y + q.dy, q.z + q.dz];
+      if (!(lo[a] - EPS <= p[a] && p[a] < hi[a] - EPS)) continue;
+      if (!(lo[b] - EPS <= p[b] && p[b] < hi[b] - EPS)) continue;
+      if (hi[axis] <= p[axis] + EPS && hi[axis] > best) best = hi[axis];
+    }
+    p[axis] = best;
+    return p;
+  }
+
+  /* Nowe punkty kandydujące po wstawieniu produktu: trzy narożniki oraz ich
+     rzuty. Rzuty są kluczowe — bez nich algorytm nie umiałby wykorzystać
+     szczelin obok i pod już ułożonymi produktami.                         */
+  newPoints(pl, placed) {
+    const x = pl.x, y = pl.y, z = pl.z;
+    const x2 = x + pl.dx, y2 = y + pl.dy, z2 = z + pl.dz;
+    return [
+      [x2, y, z], [x, y2, z], [x, y, z2],
+      this.project([x2, y, z], 1, placed),
+      this.project([x2, y, z], 2, placed),
+      this.project([x, y2, z], 0, placed),
+      this.project([x, y2, z], 2, placed),
+      this.project([x, y, z2], 0, placed),
+      this.project([x, y, z2], 1, placed),
+    ];
+  }
+
+  /* Usuwa duplikaty, punkty poza kartonem i punkty leżące wewnątrz produktów. */
+  prune(points, placed) {
+    const out = [], seen = new Set();
+    for (const p of points) {
+      const k = [Math.round(p[0] * 1e6) / 1e6,
+                 Math.round(p[1] * 1e6) / 1e6,
+                 Math.round(p[2] * 1e6) / 1e6];
+      const key = k.join(",");
+      if (seen.has(key)) continue;
+      if (k[0] > this.c.length - EPS || k[1] > this.c.width - EPS ||
+          k[2] > this.c.height - EPS) continue;
+      let inside = false;
+      for (const q of placed) {
+        if (q.x - EPS < k[0] && k[0] < q.x + q.dx - EPS &&
+            q.y - EPS < k[1] && k[1] < q.y + q.dy - EPS &&
+            q.z - EPS < k[2] && k[2] < q.z + q.dz - EPS) { inside = true; break; }
+      }
+      if (inside) continue;
+      seen.add(key);
+      out.push(k);
+    }
+    // sortowanie od dna daje powtarzalny (deterministyczny) wynik
+    out.sort((a, b) => a[2] - b[2] || a[1] - b[1] || a[0] - b[0]);
+    return out;
+  }
+
+  /* Główna pętla: pakuje sztuki w zadanej kolejności. */
+  packSequence(pieces) {
+    const placed = [];
+    let points = [[0, 0, 0]];
+
+    for (const product of pieces) {
+      let bestScore = null, bestPoint = null, bestOrient = null;
+
+      for (const pt of points) {
+        for (const o of product.orientations) {
+          if (!this.fits(pt, o, placed)) continue;
+          if (!this.supported(pt, o, placed)) continue;
+          const s = this.score(pt, o, placed);
+          if (bestScore === null || lessThan(s, bestScore)) {
+            bestScore = s; bestPoint = pt; bestOrient = o;
+          }
+        }
+      }
+      if (bestPoint === null) continue;      // ta sztuka się nie mieści
+
+      const pl = {
+        product: product.name,
+        x: bestPoint[0], y: bestPoint[1], z: bestPoint[2],
+        dx: bestOrient.dx, dy: bestOrient.dy, dz: bestOrient.dz,
+        orientation: bestOrient.label,
+      };
+      placed.push(pl);
+
+      // zużyty punkt znika, w zamian pojawiają się nowe kandydatury
+      const rest = points.filter(p => p !== bestPoint);
+      points = this.prune(rest.concat(this.newPoints(pl, placed)), placed);
+    }
+    return placed;
+  }
+}
+
+/* Porównanie leksykograficzne dwóch tablic ocen. */
+function lessThan(a, b) {
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] < b[i] - 1e-12) return true;
+    if (a[i] > b[i] + 1e-12) return false;
+  }
+  return false;
+}
+
+/* Rozwija typy produktów na listę pojedynczych sztuk. */
+function expand(products) {
+  const out = [];
+  for (const p of products) for (let i = 0; i < p.quantity; i++) out.push(p);
+  return out;
+}
+
+/* Kilka sensownych kolejności wkładania. Kolejność mocno wpływa na jakość
+   heurystyki, a policzenie kilku wariantów jest tanie — bierzemy najlepszy. */
+function orderings(products) {
+  const vol = p => p.length * p.width * p.height;
+  const maxDim = p => Math.max(p.length, p.width, p.height);
+  const byKey = (keys) => expand(products).slice().sort((a, b) => {
+    for (const k of keys) { const d = k(b) - k(a); if (d) return d; }
+    return 0;
+  });
+
+  const byVolDesc = products.slice().sort((a, b) => vol(b) - vol(a));
+  const fixedFirst = products.slice().sort(
+    (a, b) => (a.rotatable === b.rotatable ? vol(b) - vol(a) : (a.rotatable ? 1 : -1)));
+
+  return [
+    ["objętość malejąco",           byKey([vol, maxDim])],
+    ["najdłuższa krawędź malejąco", byKey([maxDim, vol])],
+    ["pole podstawy malejąco",      byKey([p => p.length * p.width, p => p.height])],
+    ["wysokość malejąco",           byKey([p => p.height, vol])],
+    ["typami: od największego",     expand(byVolDesc)],
+    ["typami: od najmniejszego",    expand(byVolDesc.slice().reverse())],
+    ["nieobracalne najpierw",       expand(fixedFirst)],
+  ];
+}
+
+/* Pakuje produkty do kartonu, zwracając najlepszy znaleziony wariant.
+   Przeszukujemy iloczyn (kolejność x tryb oceny miejsca).            */
+function pack(container, products, supportRatio) {
+  // orientacje liczymy raz — są używane w najgorętszej pętli algorytmu
+  for (const p of products) p.orientations = orientationsOf(p);
+
+  const total = products.reduce((s, p) => s + p.quantity, 0);
+  let best = null;
+
+  for (const [name, pieces] of orderings(products)) {
+    for (const mode of ["dblf", "contact"]) {
+      const placements = new Packer(container, supportRatio, mode).packSequence(pieces);
+      const volume = placements.reduce((s, p) => s + p.dx * p.dy * p.dz, 0);
+      const result = { placements, volume, strategy: name + " / ocena: " + mode };
+      if (!best || volume > best.volume ||
+          (volume === best.volume && placements.length > best.placements.length)) {
+        best = result;
+      }
+      // nie da się zapakować więcej niż wszystko — kończymy wcześniej
+      if (placements.length === total) return best;
+    }
+  }
+  return best;
+}
+
+/* Niezależna kontrola wyniku: nic nie wystaje poza karton, nic się nie
+   przenika, nie zapakowano więcej sztuk niż dostępnych.               */
+function validate(container, products, placements) {
+  const problems = [];
+  for (const p of placements) {
+    if (p.x < -EPS || p.y < -EPS || p.z < -EPS ||
+        p.x + p.dx > container.length + EPS ||
+        p.y + p.dy > container.width + EPS ||
+        p.z + p.dz > container.height + EPS) {
+      problems.push(p.product + " @ (" + p.x + "," + p.y + "," + p.z + ") wystaje poza karton");
+    }
+  }
+  for (let i = 0; i < placements.length; i++) {
+    for (let j = i + 1; j < placements.length; j++) {
+      const a = placements[i], b = placements[j];
+      if (a.x < b.x + b.dx - EPS && b.x < a.x + a.dx - EPS &&
+          a.y < b.y + b.dy - EPS && b.y < a.y + a.dy - EPS &&
+          a.z < b.z + b.dz - EPS && b.z < a.z + a.dz - EPS) {
+        problems.push("kolizja: " + a.product + " z " + b.product);
+      }
+    }
+  }
+  const counts = {};
+  for (const p of placements) counts[p.product] = (counts[p.product] || 0) + 1;
+  for (const p of products) {
+    if ((counts[p.name] || 0) > p.quantity) {
+      problems.push(p.name + ": zapakowano więcej sztuk niż dostępnych");
+    }
+  }
+  return problems;
+}
+
+
+/* =========================================================================
+   CZĘŚĆ 2 — WIZUALIZACJA 3D
+   Rysowanie na zwykłym <canvas> 2D: rzut równoległy + algorytm malarza
+   (ścianki sortowane od najdalszej do najbliższej). Bez bibliotek, więc
+   plik działa offline i nie potrzebuje internetu.
+   ========================================================================= */
+
+const PALETTE = ["#4C9BE8", "#F2994A", "#4CB782", "#E4586B",
+                 "#9B7EDE", "#F2C94C", "#00B8B8", "#B85C9E"];
+
+const view = { az: -0.95, el: 0.36, zoom: 1, cut: Infinity, hidden: new Set() };
+let current = null;   // ostatni policzony wynik
+
+/* Wektory kamery dla zadanego azymutu i elewacji.
+   d = kierunek patrzenia, r = w prawo na ekranie, u = w górę na ekranie. */
+function cameraBasis(az, el) {
+  const ca = Math.cos(az), sa = Math.sin(az), ce = Math.cos(el), se = Math.sin(el);
+  return {
+    d: [ce * ca, ce * sa, se],
+    r: [-sa, ca, 0],
+    u: [-se * ca, -se * sa, ce],
+  };
+}
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+
+/* Przyciemnia/rozjaśnia kolor w zapisie #rrggbb o zadany współczynnik. */
+function shade(hex, factor) {
+  const n = parseInt(hex.slice(1), 16);
+  const cl = v => Math.max(0, Math.min(255, Math.round(v * factor)));
+  return "rgb(" + cl((n >> 16) & 255) + "," + cl((n >> 8) & 255) + "," + cl(n & 255) + ")";
+}
+
+/* Sześć ścian prostopadłościanu: wierzchołki, normalna i jasność. */
+function boxFaces(x, y, z, dx, dy, dz) {
+  const x2 = x + dx, y2 = y + dy, z2 = z + dz;
+  return [
+    { n: [0, 0, 1],  s: 1.00, v: [[x,y,z2],[x2,y,z2],[x2,y2,z2],[x,y2,z2]] },  // góra
+    { n: [0, 0, -1], s: 0.55, v: [[x,y,z],[x2,y,z],[x2,y2,z],[x,y2,z]] },      // dół
+    { n: [0, -1, 0], s: 0.86, v: [[x,y,z],[x2,y,z],[x2,y,z2],[x,y,z2]] },      // przód
+    { n: [0, 1, 0],  s: 0.72, v: [[x,y2,z],[x2,y2,z],[x2,y2,z2],[x,y2,z2]] },  // tył
+    { n: [-1, 0, 0], s: 0.66, v: [[x,y,z],[x,y2,z],[x,y2,z2],[x,y,z2]] },      // lewo
+    { n: [1, 0, 0],  s: 0.79, v: [[x2,y,z],[x2,y2,z],[x2,y2,z2],[x2,y,z2]] },  // prawo
+  ];
+}
+
+function containerEdges(c) {
+  const p = [[0,0,0],[c.length,0,0],[c.length,c.width,0],[0,c.width,0],
+             [0,0,c.height],[c.length,0,c.height],[c.length,c.width,c.height],[0,c.width,c.height]];
+  const idx = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  return idx.map(([i, j]) => [p[i], p[j]]);
+}
+
+function draw() {
+  const canvas = document.getElementById("stage");
+  const ctx = canvas.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  canvas.width = Math.round(w * dpr);
+  canvas.height = Math.round(h * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  if (!current) return;
+
+  const c = current.container;
+  const cam = cameraBasis(view.az, view.el);
+  const centre = [c.length / 2, c.width / 2, c.height / 2];
+
+  // rzut punktu ze świata (cm) na ekran (piksele)
+  const raw = p => {
+    const q = [p[0] - centre[0], p[1] - centre[1], p[2] - centre[2]];
+    return { x: dot(q, cam.r), y: -dot(q, cam.u), depth: dot(q, cam.d) };
+  };
+
+  // skala tak, żeby cały karton mieścił się w kadrze
+  const corners = [[0,0,0],[c.length,0,0],[0,c.width,0],[c.length,c.width,0],
+                   [0,0,c.height],[c.length,0,c.height],[0,c.width,c.height],[c.length,c.width,c.height]]
+                  .map(raw);
+  const spanX = Math.max(...corners.map(p => Math.abs(p.x))) * 2;
+  const spanY = Math.max(...corners.map(p => Math.abs(p.y))) * 2;
+  const scale = Math.min(w / spanX, h / spanY) * 0.82 * view.zoom;
+  const P = p => { const q = raw(p); return { x: w / 2 + q.x * scale, y: h / 2 + q.y * scale, depth: q.depth }; };
+
+  // --- 1. tylne krawędzie kartonu (rysowane pod produktami) ---
+  const edges = containerEdges(c).map(e => {
+    const a = P(e[0]), b = P(e[1]);
+    return { a, b, depth: (a.depth + b.depth) / 2 };
+  });
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "#B7C2CC";
+  for (const e of edges.filter(e => e.depth < 0)) {
+    ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); ctx.stroke();
+  }
+
+  // --- 2. produkty: zbieramy widoczne ścianki i sortujemy od najdalszej ---
+  const faces = [];
+  for (const p of current.placements) {
+    if (view.hidden.has(p.product)) continue;
+    if (p.z + p.dz > view.cut + 1e-9) continue;          // przekrój poziomy
+    const base = current.colors[p.product] || "#999999";
+    for (const f of boxFaces(p.x, p.y, p.z, p.dx, p.dy, p.dz)) {
+      if (dot(f.n, cam.d) <= 0) continue;                // ścianka odwrócona od nas
+      const pts = f.v.map(P);
+      faces.push({
+        pts,
+        depth: pts.reduce((s, q) => s + q.depth, 0) / 4,
+        fill: shade(base, f.s),
+      });
+    }
+  }
+  faces.sort((a, b) => a.depth - b.depth);               // algorytm malarza
+  ctx.lineJoin = "round";
+  ctx.lineWidth = 0.7;
+  ctx.strokeStyle = "rgba(20,30,40,0.55)";
+  for (const f of faces) {
+    ctx.beginPath();
+    ctx.moveTo(f.pts[0].x, f.pts[0].y);
+    for (let i = 1; i < f.pts.length; i++) ctx.lineTo(f.pts[i].x, f.pts[i].y);
+    ctx.closePath();
+    ctx.fillStyle = f.fill;
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  // --- 3. przednie krawędzie kartonu (rysowane na wierzchu) ---
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = "#37474F";
+  for (const e of edges.filter(e => e.depth >= 0)) {
+    ctx.beginPath(); ctx.moveTo(e.a.x, e.a.y); ctx.lineTo(e.b.x, e.b.y); ctx.stroke();
+  }
+
+  // --- 4. opis wymiarów kartonu w rogu ---
+  ctx.fillStyle = "#5B6B7B";
+  ctx.font = "12px -apple-system, Segoe UI, Roboto, Arial, sans-serif";
+  ctx.fillText("karton " + fmt(c.length) + " × " + fmt(c.width) + " × " + fmt(c.height) + " cm", 10, 18);
+  if (view.cut < c.height) {
+    ctx.fillText("przekrój: pokazane do wysokości " + fmt(view.cut) + " cm", 10, 36);
+  }
+}
+
+
+/* =========================================================================
+   CZĘŚĆ 3 — INTERFEJS: formularz, raport, obsługa myszy
+   ========================================================================= */
+
+const $ = id => document.getElementById(id);
+const fmt = n => (Math.round(n * 100) / 100).toString();
+const fmtInt = n => Math.round(n).toLocaleString("pl-PL");
+
+const EXAMPLE = [
+  { name: "Produkt A", length: 10, width: 10, height: 4, quantity: 50, rotatable: true },
+  { name: "Produkt B", length: 15, width: 10, height: 8, quantity: 20, rotatable: false },
+];
+
+/* --- edytowalna tabela produktów --- */
+function addRow(data) {
+  const i = $("rows").children.length;
+  const d = data || { name: "Produkt " + String.fromCharCode(65 + i),
+                      length: 10, width: 10, height: 10, quantity: 10, rotatable: true };
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    '<td><input type="color" value="' + PALETTE[i % PALETTE.length] + '" title="kolor na wizualizacji"></td>' +
+    '<td><input type="text" value="' + escapeHtml(d.name) + '"></td>' +
+    '<td><input type="number" min="0.1" step="0.1" value="' + d.length + '"></td>' +
+    '<td><input type="number" min="0.1" step="0.1" value="' + d.width + '"></td>' +
+    '<td><input type="number" min="0.1" step="0.1" value="' + d.height + '"></td>' +
+    '<td><input type="number" min="0" step="1" value="' + d.quantity + '"></td>' +
+    '<td style="text-align:center"><input type="checkbox"' + (d.rotatable ? " checked" : "") +
+      ' title="czy produkt można obracać we wszystkich osiach"></td>' +
+    '<td><button type="button" class="del" title="usuń wiersz">×</button></td>';
+  tr.querySelector("button.del").addEventListener("click", () => tr.remove());
+  $("rows").appendChild(tr);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, ch =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+}
+
+/* Odczytuje formularz. Zwraca null i pokazuje komunikat, gdy dane są błędne. */
+function readForm() {
+  const container = {
+    length: parseFloat($("cL").value),
+    width: parseFloat($("cW").value),
+    height: parseFloat($("cH").value),
+  };
+  if (!(container.length > 0 && container.width > 0 && container.height > 0)) {
+    alert("Wymiary kartonu muszą być liczbami większymi od zera.");
+    return null;
+  }
+
+  const products = [], colors = {};
+  for (const tr of $("rows").children) {
+    const f = tr.querySelectorAll("input");
+    const name = f[1].value.trim() || "produkt";
+    const p = {
+      name,
+      length: parseFloat(f[2].value),
+      width: parseFloat(f[3].value),
+      height: parseFloat(f[4].value),
+      quantity: parseInt(f[5].value, 10),
+      rotatable: f[6].checked,
+    };
+    if (!(p.length > 0 && p.width > 0 && p.height > 0) || !(p.quantity >= 0)) {
+      alert('Produkt "' + name + '" ma niepoprawne wymiary lub liczbę sztuk.');
+      return null;
+    }
+    if (colors[name] !== undefined) {
+      alert('Dwa produkty mają tę samą nazwę ("' + name + '"). Nazwy muszą być różne.');
+      return null;
+    }
+    colors[name] = f[0].value;
+    if (p.quantity > 0) products.push(p);
+  }
+  if (!products.length) { alert("Dodaj przynajmniej jeden produkt."); return null; }
+
+  const totalPieces = products.reduce((s, p) => s + p.quantity, 0);
+  if (totalPieces > 1500) {
+    if (!confirm("Podano " + totalPieces + " sztuk. Obliczenia mogą potrwać kilkadziesiąt " +
+                 "sekund i przeglądarka będzie w tym czasie nie reagować. Kontynuować?")) return null;
+  }
+  return { container, products, colors };
+}
+
+/* --- uruchomienie pakowania i wypełnienie raportu --- */
+function run() {
+  const input = readForm();
+  if (!input) return;
+  const supportRatio = parseInt($("support").value, 10) / 100;
+
+  const t0 = performance.now();
+  const best = pack(input.container, input.products, supportRatio);
+  const elapsed = (performance.now() - t0) / 1000;
+
+  current = {
+    container: input.container,
+    products: input.products,
+    colors: input.colors,
+    placements: best.placements,
+    strategy: best.strategy,
+    volume: best.volume,
+  };
+  view.cut = input.container.height;
+  view.hidden.clear();
+
+  $("timing").textContent = "policzone w " + elapsed.toFixed(2) + " s · strategia: " + best.strategy;
+  renderStats();
+  renderLegend();
+  renderTables();
+
+  const cut = $("cut");
+  cut.max = String(input.container.height);
+  cut.value = String(input.container.height);
+  $("cutVal").textContent = "cała";
+  draw();
+}
+
+function renderStats() {
+  const c = current.container;
+  const cVol = c.length * c.width * c.height;
+  const total = current.products.reduce((s, p) => s + p.quantity, 0);
+  const maxH = current.placements.reduce((m, p) => Math.max(m, p.z + p.dz), 0);
+  const fill = current.volume / cVol * 100;
+
+  $("stats").innerHTML = [
+    ["zapakowano", current.placements.length + " / " + total, "szt."],
+    ["wykorzystanie objętości", fill.toFixed(2) + "%", ""],
+    ["objętość zapakowana", fmtInt(current.volume), "cm³"],
+    ["objętość kartonu", fmtInt(cVol), "cm³"],
+    ["wysokość stosu", fmt(maxH) + " / " + fmt(c.height), "cm"],
+  ].map(([k, v]) => '<div class="stat"><div class="v">' + escapeHtml(v) +
+       '</div><div class="k">' + escapeHtml(k) + "</div></div>").join("");
+
+  const problems = validate(c, current.products, current.placements);
+  $("validation").innerHTML = problems.length
+    ? '<span class="bad">Walidacja: ' + problems.length + " problem(ów) — " +
+      escapeHtml(problems.slice(0, 3).join("; ")) + "</span>"
+    : '<span class="ok">Walidacja OK</span> — żaden produkt nie wystaje poza karton ' +
+      "i nie ma kolizji między produktami.";
+}
+
+/* Legenda działa też jako przełącznik widoczności typów produktów. */
+function renderLegend() {
+  const packed = {};
+  for (const p of current.placements) packed[p.product] = (packed[p.product] || 0) + 1;
+
+  $("legend").innerHTML = "";
+  for (const p of current.products) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("aria-pressed", "true");
+    b.title = "kliknij, aby ukryć/pokazać ten produkt na wizualizacji";
+    b.innerHTML = '<span class="swatch" style="background:' + current.colors[p.name] + '"></span>' +
+      escapeHtml(p.name) + " · " + fmt(p.length) + "×" + fmt(p.width) + "×" + fmt(p.height) +
+      " cm · " + (p.rotatable ? "obrót OK" : "bez obrotu") +
+      " · <b>" + (packed[p.name] || 0) + "/" + p.quantity + " szt.</b>";
+    b.addEventListener("click", () => {
+      const on = b.getAttribute("aria-pressed") === "true";
+      b.setAttribute("aria-pressed", on ? "false" : "true");
+      if (on) view.hidden.add(p.name); else view.hidden.delete(p.name);
+      draw();
+    });
+    $("legend").appendChild(b);
+  }
+}
+
+function renderTables() {
+  // lista ułożonych sztuk, warstwami od dołu — tak jak układałby to człowiek
+  const rows = current.placements.slice().sort(
+    (a, b) => a.z - b.z || a.y - b.y || a.x - b.x || a.product.localeCompare(b.product));
+  $("placed").innerHTML = rows.map((p, i) =>
+    "<tr><td>" + (i + 1) + '</td><td><span class="dot" style="background:' +
+    current.colors[p.product] + '"></span>' + escapeHtml(p.product) + "</td>" +
+    '<td class="num">' + fmt(p.x) + '</td><td class="num">' + fmt(p.y) +
+    '</td><td class="num">' + fmt(p.z) + "</td>" +
+    "<td>" + fmt(p.dx) + " × " + fmt(p.dy) + " × " + fmt(p.dz) + " cm</td>" +
+    "<td>" + escapeHtml(p.orientation) + "</td></tr>").join("");
+
+  const packed = {};
+  for (const p of current.placements) packed[p.product] = (packed[p.product] || 0) + 1;
+  const left = current.products
+    .map(p => ({ p, n: p.quantity - (packed[p.name] || 0) }))
+    .filter(o => o.n > 0);
+
+  $("leftover").innerHTML = left.length
+    ? '<table class="data"><thead><tr><th>produkt</th><th class="num">nie zmieściło się</th>' +
+      '<th class="num">z dostępnych</th><th class="num">pozostała objętość</th></tr></thead><tbody>' +
+      left.map(o => "<tr><td><span class=\"dot\" style=\"background:" + current.colors[o.p.name] +
+        '"></span>' + escapeHtml(o.p.name) + '</td><td class="num">' + o.n +
+        '</td><td class="num">' + o.p.quantity + '</td><td class="num">' +
+        fmtInt(o.n * o.p.length * o.p.width * o.p.height) + " cm³</td></tr>").join("") +
+      "</tbody></table>"
+    : '<p class="note ok" style="margin:0">Nic — wszystkie produkty zmieściły się w kartonie.</p>';
+}
+
+/* --- obsługa myszy: obracanie i przybliżanie --- */
+function initCanvas() {
+  const canvas = $("stage");
+  let dragging = false, lastX = 0, lastY = 0;
+
+  canvas.addEventListener("pointerdown", e => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    canvas.classList.add("dragging");
+    canvas.setPointerCapture(e.pointerId);
+  });
+  canvas.addEventListener("pointermove", e => {
+    if (!dragging) return;
+    view.az -= (e.clientX - lastX) * 0.01;
+    view.el += (e.clientY - lastY) * 0.01;
+    // ograniczenie elewacji, żeby widok nie stanął "na głowie"
+    view.el = Math.max(-1.45, Math.min(1.45, view.el));
+    lastX = e.clientX; lastY = e.clientY;
+    draw();
+  });
+  const stop = e => {
+    dragging = false;
+    canvas.classList.remove("dragging");
+    if (e.pointerId !== undefined && canvas.hasPointerCapture(e.pointerId)) {
+      canvas.releasePointerCapture(e.pointerId);
+    }
+  };
+  canvas.addEventListener("pointerup", stop);
+  canvas.addEventListener("pointercancel", stop);
+  canvas.addEventListener("wheel", e => {
+    e.preventDefault();
+    view.zoom = Math.max(0.35, Math.min(4, view.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1)));
+    draw();
+  }, { passive: false });
+
+  window.addEventListener("resize", draw);
+}
+
+/* --- podpięcie kontrolek --- */
+function init() {
+  EXAMPLE.forEach(addRow);
+  initCanvas();
+
+  $("addRow").addEventListener("click", () => addRow());
+  $("loadExample").addEventListener("click", () => {
+    $("rows").innerHTML = "";
+    $("cL").value = 40; $("cW").value = 40; $("cH").value = 60;
+    EXAMPLE.forEach(addRow);
+  });
+  $("run").addEventListener("click", run);
+
+  $("support").addEventListener("input", e => {
+    $("supportVal").textContent = e.target.value + "%";
+  });
+
+  $("cut").addEventListener("input", e => {
+    const v = parseFloat(e.target.value);
+    view.cut = v;
+    $("cutVal").textContent = (current && v >= current.container.height)
+      ? "cała" : fmt(v) + " cm";
+    draw();
+  });
+
+  $("resetView").addEventListener("click", () => {
+    view.az = -0.95; view.el = 0.36; view.zoom = 1;
+    draw();
+  });
+
+  $("savePng").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.download = "pakowanie-3d.png";
+    a.href = $("stage").toDataURL("image/png");
+    a.click();
+  });
+
+  run();   // policz od razu przykład z zadania
+}
+
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

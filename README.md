@@ -4,11 +4,24 @@ Program układa wiele różnych typów produktów w jednym kartonie tak, żeby z
 ich jak najwięcej, respektując ograniczenia obrotu poszczególnych produktów,
 i rysuje wynik w 3D.
 
-## Uruchomienie
+Są dwie wersje, dające **identyczny** wynik:
+
+* **`pakowanie.html`** — jeden plik, otwierasz podwójnym kliknięciem w przeglądarce.
+  Nie wymaga Pythona, instalacji ani uprawnień administratora, działa offline.
+  Do tego pozwala obracać karton myszką i zmieniać dane w formularzu.
+* **wersja pythonowa** (`main.py` + moduły) — do skryptowania, testów
+  automatycznych i dalszej rozbudowy.
+
+## Uruchomienie — wersja przeglądarkowa
+
+Otwórz `pakowanie.html` w Chrome, Edge lub Firefoksie. To wszystko — żadnej
+instalacji, żadnego internetu.
+
+## Uruchomienie — wersja pythonowa
 
 ```bash
 pip install matplotlib numpy
-python3 main.py        # pakowanie + raport + wizualizacje
+python3 main.py          # pakowanie + raport + wizualizacje
 python3 test_packing.py  # testy poprawności
 ```
 
@@ -19,10 +32,16 @@ zmiennymi na górze `main.py` — tam się je zmienia.
 
 | plik | zawartość |
 |---|---|
+| `pakowanie.html` | cała aplikacja w jednym pliku: algorytm (JS) + interaktywna wizualizacja 3D na `<canvas>` + formularz. Zero zależności |
 | `packing.py` | model danych + algorytm pakowania + walidacja wyniku |
 | `visualization.py` | rysowanie 3D (matplotlib/mplot3d) |
 | `main.py` | dane wejściowe, raport tekstowy, uruchomienie |
 | `test_packing.py` | testy poprawności (obroty, kolizje, limity sztuk, podparcie) |
+
+Obie implementacje algorytmu są swoimi wiernymi odpowiednikami i na danych
+testowych dają **co do sztuki to samo ułożenie** (zweryfikowane przez
+porównanie współrzędnych wszystkich 70 sztuk). Zmieniając algorytm, trzeba
+poprawić oba pliki — to cena za wersję działającą bez Pythona.
 
 ## Dlaczego własny algorytm, a nie py3dbp
 
@@ -101,6 +120,16 @@ Wszystkie sztuki mieszczą się na 28 cm z 60 cm dostępnej wysokości — zosta
 32 cm wolnego miejsca.
 
 ## Wizualizacje
+
+Wersja przeglądarkowa rysuje interaktywny widok 3D na `<canvas>` (rzut
+równoległy + algorytm malarza, bez żadnej biblioteki 3D):
+
+* przeciąganie myszką obraca karton, kółko myszy przybliża,
+* suwak **przekroju** ścina górne warstwy, żeby zobaczyć, co jest w środku,
+* kliknięcie w legendę ukrywa/pokazuje dany typ produktu,
+* przycisk **zapisz PNG** eksportuje bieżący widok.
+
+Wersja pythonowa zapisuje trzy pliki:
 
 | plik | co pokazuje |
 |---|---|
