@@ -35,6 +35,34 @@ EXCLUDE = re.compile(r"""
   | foam | filled | eyelet | embossing | basket | container | \bbelt\b
 """, re.I | re.X)
 
+# Etui na tablety i laptopy – druga grupa liczona w tej rundzie.
+# Świadomie NIE obejmuje etui na telefon, wizytowników, piórników, okładek
+# na menu ani etui na paszport: to inna konstrukcja i inny rozmiar.
+ETUI = re.compile(r"""
+    tablet\s?case | laptop\s?case | tablet\s?cover | notebook\s?cover
+  | ^\s*case\s+a[45]\b | \bcase\s+a[45]\s
+""", re.I | re.X)
+
+# Etui z kieszenią albo klapą ma jeden panel materiału więcej.
+# Dopuszczamy słowa pośrednie: "with pocket", "with flap", "with leather flap",
+# "with front pocket".
+ETUI_EXTRA_PANEL = re.compile(r'with\s+(?:\w+\s+){0,2}(pocket|flap)', re.I)
+
+
+def is_case(text: str) -> bool:
+    """Czy opis wskazuje na etui na tablet albo laptop."""
+    return bool(ETUI.search(text or ""))
+
+
+def case_panels(text: str) -> int:
+    """Ile warstw materiału ma ścianka etui.
+
+    Pusty pokrowiec jest uszyty z dwóch paneli. Wersje "with pocket" albo
+    "with flap" mają trzeci panel, więc leżą grubiej.
+    """
+    return 3 if ETUI_EXTRA_PANEL.search(text or "") else 2
+
+
 # Ile warstw materiału ma jedna sztuka.
 _LAYERS = [
     (re.compile(r'\b3\s*-?\s*layers?\b|\bsandwich\b', re.I), 3),
@@ -99,15 +127,16 @@ def _felt_mm(material: str) -> float | None:
     return sum(float(x.replace(",", ".")) for x in found)
 
 
-def piece_thickness_mm(material: str, text: str) -> tuple[float | None, str]:
+def piece_thickness_mm(material: str, text: str,
+                       panels: int | None = None) -> tuple[float | None, str]:
     """Grubość jednej sztuki wraz z opisem, z czego się składa.
 
-    Wyrób jednorodny: grubość materiału razy liczba warstw z opisu
-    ("2-layer" / "double" = podwójna, "3-layer" / "sandwich" = potrójna).
+    panels=None – płatek materiału: liczbę warstw bierzemy z opisu
+        ("2-layer" / "double" = podwójna, "3-layer" / "sandwich" = potrójna).
+    panels=2/3  – etui: liczba paneli wynika z konstrukcji pokrowca, nie z opisu.
 
-    Wyrób złożony ("A + B"): grubość rdzenia plus warstwy doklejone/naszyte,
-    wg tabeli COMPONENTS. Tutaj liczba warstw wynika z konstrukcji wyrobu,
-    a nie z mnożenia całości przez liczbę z opisu.
+    Doklejone lub naszyte składniki (skóra, press board, oklejka z papieru)
+    doliczamy raz, wg tabeli COMPONENTS – niezależnie od liczby paneli.
     """
     mat = (material or "").lower()
     core = _felt_mm(material)
@@ -117,7 +146,7 @@ def piece_thickness_mm(material: str, text: str) -> tuple[float | None, str]:
     if core is None and "+" not in (material or ""):
         hit = next((k for k in COMPONENTS if k in mat), None)
         if hit:
-            n = layer_count(text)
+            n = panels if panels else layer_count(text)
             mm = COMPONENTS[hit]["mm"] * n
             return mm, (f"{hit} {COMPONENTS[hit]['mm']:g} mm x {n} warstw"
                         if n > 1 else f"{hit} {COMPONENTS[hit]['mm']:g} mm")
@@ -139,8 +168,10 @@ def piece_thickness_mm(material: str, text: str) -> tuple[float | None, str]:
         if unknown in mat:
             return None, f"nieznana grubość: {unknown}"
 
-    if extras > 0:                       # wyrób złożony – warstwy są w materiale
-        return core + extras, " + ".join(parts)
-
-    n = layer_count(text)                # wyrób jednorodny – warstwy z opisu
-    return core * n, (f"{core:g} mm x {n} warstw" if n > 1 else f"{core:g} mm")
+    n = panels if panels else (1 if extras > 0 else layer_count(text))
+    body = core * n
+    if n > 1:
+        parts[0] = f"rdzeń {core:g} mm x {n}"
+    if extras > 0:
+        return body + extras, " + ".join(parts)
+    return body, (f"{core:g} mm x {n} warstw" if n > 1 else f"{core:g} mm")

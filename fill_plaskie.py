@@ -74,11 +74,24 @@ def read_blocks(path: str) -> list[dict]:
 
 
 def analyse(path: str) -> list[dict]:
-    """Wynik dla każdego wariantu będącego płaskim płatkiem materiału."""
+    """Wynik dla każdego wariantu w policzonych dotąd grupach.
+
+    Grupa 1 – płaski płatek materiału (podkładki, zawieszki, zakładki, maty):
+              grubość = materiał razy liczba warstw z opisu.
+    Grupa 2 – etui na tablety i laptopy: grubość = materiał razy liczba paneli
+              (2 dla pustego pokrowca, 3 dla wersji z kieszenią albo klapą).
+    """
     out = []
     for block in read_blocks(path):
         flat = cf.parse_flat_size(block["size"])
-        if not flat or not plaskie.is_flat_sheet(block["text"]):
+        if not flat:
+            continue
+
+        if plaskie.is_flat_sheet(block["text"]):
+            kind, panels = "płatek", None
+        elif plaskie.is_case(block["text"]):
+            kind, panels = "etui", plaskie.case_panels(block["text"])
+        else:
             continue
 
         # materiał wariantu; gdy pusty, bierzemy z pierwszego wiersza bloku
@@ -87,12 +100,12 @@ def analyse(path: str) -> list[dict]:
 
         for item in block["rows"]:
             material = item["material"] or default_mat
-            mm, basis = plaskie.piece_thickness_mm(material, block["text"])
+            mm, basis = plaskie.piece_thickness_mm(material, block["text"], panels)
             rec = {"row": item["row"], "code": item["code"],
                    "name": item["name"] or header["name"],
                    "desc": item["desc"] or header["desc"],
                    "size": block["size"], "material": material,
-                   "basis": basis, "mm": mm,
+                   "kind": kind, "panels": panels, "basis": basis, "mm": mm,
                    "count": None, "per_layer": None, "stack": None, "why": ""}
 
             if mm is None:
@@ -147,23 +160,27 @@ def main() -> None:
 
     done = [r for r in results if r["count"]]
     skipped = [r for r in results if not r["count"]]
-    print(f"pozycji w zakresie (płatki materiału): {len(results)}")
-    print(f"  policzonych i wpisanych:             {written}")
-    print(f"  bez wyniku:                          {len(skipped)}")
+    for kind in ("płatek", "etui"):
+        grp = [r for r in results if r["kind"] == kind]
+        ok = [r for r in grp if r["count"]]
+        print(f"{kind:<8} pozycji: {len(grp):>4}   policzonych: {len(ok):>4}   "
+              f"bez wyniku: {len(grp) - len(ok):>3}")
+    print(f"RAZEM    pozycji: {len(results):>4}   wpisanych:   {written:>4}   "
+          f"bez wyniku: {len(skipped):>3}")
     for r in skipped:
         print(f"     w.{r['row']:<5} {r['name'][:22]:<22} {r['size'][:16]:<16} "
               f"{r['material'][:26]:<26} – {r['why']}")
 
-    print(f"\n{'nazwa':<20}{'opis':<26}{'rozmiar':<15}{'gr.':>7}"
+    print(f"\n{'grupa':<8}{'nazwa':<19}{'opis':<26}{'rozmiar':<15}{'gr.':>7}"
           f"{'/warstwę':>9}{'warstw':>8}{'SZTUK':>8}   z czego")
-    print("-" * 128)
+    print("-" * 136)
     seen = set()
     for r in sorted(done, key=lambda x: x["row"]):
         key = (r["name"], r["size"], r["mm"])
         if key in seen:
             continue
         seen.add(key)
-        print(f"{r['name'][:19]:<20}{r['desc'][:25]:<26}{r['size'][:14]:<15}"
+        print(f"{r['kind']:<8}{r['name'][:18]:<19}{r['desc'][:25]:<26}{r['size'][:14]:<15}"
               f"{r['mm']:>5g}mm{r['per_layer']:>9}"
               f"{r['stack']:>8}{r['count']:>8}   {r['basis']}")
 
