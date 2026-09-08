@@ -76,11 +76,14 @@ _RE_MM = re.compile(r'(\d+(?:[.,]\d+)?)\s*mm', re.I)
 COMPONENTS = {
     "washable paper": {"mm": 1.0, "layers": 2},
     "recycled leather": {"mm": 0.6, "layers": 1},
+    "pu- leather": {"mm": 1.0, "layers": 1},   # grubość podana przez użytkownika
+    "pu-leather": {"mm": 1.0, "layers": 1},
+    "tyvek": {"mm": 0.1, "layers": 1},         # grubość podana przez użytkownika
 }
 
 # Materiały bez znanej grubości – pozycja zostaje bez wyniku zamiast zgadywania.
-NO_THICKNESS = ["press board", "pressboard", "pu- leather", "pu-leather",
-                "wp/rl", "tyvek", "cotton", "neoprene", "polyester band"]
+NO_THICKNESS = ["press board", "pressboard", "wp/rl",
+                "cotton", "neoprene", "polyester band"]
 
 
 def _felt_mm(material: str) -> float | None:
