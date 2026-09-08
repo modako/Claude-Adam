@@ -9,6 +9,7 @@ Działa też pod pytest:
 
 from __future__ import annotations
 
+import carton_fit as cf
 from packing import Container, ProductType, pack, validate
 
 
@@ -104,6 +105,65 @@ def test_example_from_the_brief_packs_everything():
                    ProductType("Produkt B", 15, 10, 8, 20, rotatable=False)])
     assert len(result.placements) == 70
     assert validate(result) == []
+
+
+
+
+# ---------------------------------------------------------------------------
+# Testy modułu carton_fit (ile sztuk płaskiego produktu wejdzie do kartonu)
+# ---------------------------------------------------------------------------
+
+
+
+def test_flat_size_parsing():
+    """Rozmiar płaski rozpoznany, trójwymiarowy odrzucony."""
+    assert cf.parse_flat_size("ca.37x25 cm") == (37.0, 25.0)
+    assert cf.parse_flat_size("ca. 22,5x32,5 cm") == (22.5, 32.5)
+    assert cf.parse_flat_size("ca. 53x40x10cm") is None   # ma fałdę
+    assert cf.parse_flat_size("Ø ca. 9 cm") is None
+    assert cf.parse_flat_size("") is None
+
+
+def test_thickness_of_laminate_is_a_sum():
+    """Laminat 'A + B' to suma grubości warstw, nie podwojona jedna z nich."""
+    assert cf.parse_thickness("wool felt 3mm").mm == 3.0
+    assert cf.parse_thickness("recycled leather + wool felt 3mm").mm == 3.6
+    assert cf.parse_thickness("recycled leather 0,6mm").mm == 0.6
+
+
+def test_thickness_flags_unknown_component():
+    """Nieznana grubość składnika musi być zgłoszona, a nie zgadnięta."""
+    t = cf.parse_thickness("washable paper + wool felt  3mm")
+    assert t.mm == 3.0
+    assert "washable paper" in t.unknown_parts
+    assert cf.parse_thickness("washable paper").mm is None
+
+
+def test_layer_packing_matches_hand_count():
+    """Układ warstwy zgodny z ręcznym przeliczeniem."""
+    C = cf.CM
+    assert cf.max_fit_2d(40 * C, 50 * C, 10 * C, 10 * C) == 20   # 4 x 5
+    assert cf.max_fit_2d(40 * C, 50 * C, 37 * C, 25 * C) == 2
+    assert cf.max_fit_2d(40 * C, 50 * C, 12 * C, 12 * C) == 12   # 3 x 4
+    # 15x10: 2x5 w bloku + 3 obrócone w pasku przy ściance
+    assert cf.max_fit_2d(40 * C, 50 * C, 15 * C, 10 * C) == 13
+
+
+def test_carton_count_is_layers_times_layer():
+    """Wynik to iloczyn sztuk na warstwie i liczby warstw."""
+    f = cf.fit_in_carton((40, 50, 60), (37, 25, 0.4))   # filc 4 mm
+    assert f.per_layer == 2 and f.layers == 150 and f.count == 300
+
+
+def test_item_larger_than_carton_gives_zero():
+    assert cf.fit_in_carton((40, 50, 60), (60, 60, 1.0)).count == 0
+
+
+def test_flat_stacking_never_beats_free_orientation():
+    """Wariant 'na płasko' jest zachowawczy wobec optimum geometrycznego."""
+    item = (12, 12, 0.36)
+    assert (cf.fit_in_carton((40, 50, 60), item, flat_only=True).count
+            <= cf.fit_in_carton((40, 50, 60), item, flat_only=False).count)
 
 
 if __name__ == "__main__":
