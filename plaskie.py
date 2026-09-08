@@ -43,11 +43,6 @@ ETUI = re.compile(r"""
   | ^\s*case\s+a[45]\b | \bcase\s+a[45]\s
 """, re.I | re.X)
 
-# Etui z kieszenią albo klapą ma jeden panel materiału więcej.
-# Dopuszczamy słowa pośrednie: "with pocket", "with flap", "with leather flap",
-# "with front pocket".
-ETUI_EXTRA_PANEL = re.compile(r'with\s+(?:\w+\s+){0,2}(pocket|flap)', re.I)
-
 
 def is_case(text: str) -> bool:
     """Czy opis wskazuje na etui na tablet albo laptop."""
@@ -65,16 +60,17 @@ SERIES_PANELS = {
 def case_panels(text: str, name: str = "") -> int:
     """Ile warstw materiału ma ścianka etui.
 
-    Najpierw sprawdzamy serię: jeśli wiemy, jak dany model się składa,
-    ta wiedza ma pierwszeństwo przed opisem. Poza tym pusty pokrowiec jest
-    uszyty z dwóch paneli, a wersje "with pocket" albo "with flap" mają
-    trzeci panel, więc leżą grubiej.
+    Reguła ustalona z użytkownikiem: na trzy warstwy składają się wyłącznie
+    teczki (DOCUMENTA, dossiery). Zwykły pokrowiec to dwa panele – i tak
+    zostaje niezależnie od tego, czy w opisie jest kieszeń albo klapa.
+    Kieszeń zajmuje część powierzchni i nie decyduje o tym, jak wyrób leży
+    w kartonie, więc nie doliczamy za nią panelu.
     """
     low = (name or "").lower()
     for series, panels in SERIES_PANELS.items():
         if series in low:
             return panels
-    return 3 if ETUI_EXTRA_PANEL.search(text or "") else 2
+    return 2
 
 
 # --- Teczki: dossiery i foldery -------------------------------------------
@@ -88,9 +84,9 @@ DOSSIER_NAME = re.compile(r'\bDOSSIER\b', re.I)
 # przez użytkownika, niezależna od rodzaju filcu.
 FOLDER_THICKNESS_MM = 25.0
 
-# Dossier nie ma ringów, jest tylko składany, więc grubość bierze się z
-# materiału: dwa panele złożonej teczki, trzeci przy przegródkach i kieszeniach.
-DOSSIER_EXTRA_PANEL = re.compile(r'compartment|pocket', re.I)
+# Dossier nie ma ringów, jest tylko składany. Jako teczka składa się tak,
+# że finalnie leżą na sobie trzy warstwy materiału.
+DOSSIER_PANELS = 3
 
 
 def is_folder(name: str) -> bool:
@@ -103,9 +99,9 @@ def is_dossier(name: str) -> bool:
     return bool(DOSSIER_NAME.search(name or ""))
 
 
-def dossier_panels(text: str) -> int:
+def dossier_panels(text: str = "") -> int:
     """Ile warstw materiału leży na sobie w złożonym dossierze."""
-    return 3 if DOSSIER_EXTRA_PANEL.search(text or "") else 2
+    return DOSSIER_PANELS
 
 
 # Ile warstw materiału ma jedna sztuka.
