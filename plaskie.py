@@ -63,6 +63,37 @@ def case_panels(text: str) -> int:
     return 3 if ETUI_EXTRA_PANEL.search(text or "") else 2
 
 
+# --- Teczki: dossiery i foldery -------------------------------------------
+# Rozpoznajemy je po NAZWIE, nie po opisie: w kolumnie Description praktycznie
+# każda teczka jest opisana jako "folder A4/A5", więc opis nie odróżnia
+# dossieru od folderu z ringami.
+FOLDER_NAME = re.compile(r'\bFOLDER\b', re.I)
+DOSSIER_NAME = re.compile(r'\bDOSSIER\b', re.I)
+
+# Folder ma metalowe ringi i to one decydują o grubości – wartość podana
+# przez użytkownika, niezależna od rodzaju filcu.
+FOLDER_THICKNESS_MM = 25.0
+
+# Dossier nie ma ringów, jest tylko składany, więc grubość bierze się z
+# materiału: dwa panele złożonej teczki, trzeci przy przegródkach i kieszeniach.
+DOSSIER_EXTRA_PANEL = re.compile(r'compartment|pocket', re.I)
+
+
+def is_folder(name: str) -> bool:
+    """Teczka z ringami – liczona stałą grubością."""
+    return bool(FOLDER_NAME.search(name or ""))
+
+
+def is_dossier(name: str) -> bool:
+    """Teczka składana, bez ringów – grubość liczona z materiału."""
+    return bool(DOSSIER_NAME.search(name or ""))
+
+
+def dossier_panels(text: str) -> int:
+    """Ile warstw materiału leży na sobie w złożonym dossierze."""
+    return 3 if DOSSIER_EXTRA_PANEL.search(text or "") else 2
+
+
 # Ile warstw materiału ma jedna sztuka.
 _LAYERS = [
     (re.compile(r'\b3\s*-?\s*layers?\b|\bsandwich\b', re.I), 3),

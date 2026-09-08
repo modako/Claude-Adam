@@ -87,7 +87,13 @@ def analyse(path: str) -> list[dict]:
         if not flat:
             continue
 
-        if plaskie.is_flat_sheet(block["text"]):
+        # teczki rozpoznajemy po nazwie – opis nie odróżnia dossieru od folderu
+        names = " ".join(r["name"] for r in block["rows"])
+        if plaskie.is_folder(names):
+            kind, panels = "folder", None
+        elif plaskie.is_dossier(names):
+            kind, panels = "dossier", plaskie.dossier_panels(block["text"])
+        elif plaskie.is_flat_sheet(block["text"]):
             kind, panels = "płatek", None
         elif plaskie.is_case(block["text"]):
             kind, panels = "etui", plaskie.case_panels(block["text"])
@@ -100,7 +106,13 @@ def analyse(path: str) -> list[dict]:
 
         for item in block["rows"]:
             material = item["material"] or default_mat
-            mm, basis = plaskie.piece_thickness_mm(material, block["text"], panels)
+            if kind == "folder":
+                # o grubości decydują ringi, nie filc – wartość stała
+                mm = plaskie.FOLDER_THICKNESS_MM
+                basis = f"ringi – stała grubość {mm / 10:g} cm"
+            else:
+                mm, basis = plaskie.piece_thickness_mm(material, block["text"],
+                                                       panels)
             rec = {"row": item["row"], "code": item["code"],
                    "name": item["name"] or header["name"],
                    "desc": item["desc"] or header["desc"],
@@ -160,7 +172,7 @@ def main() -> None:
 
     done = [r for r in results if r["count"]]
     skipped = [r for r in results if not r["count"]]
-    for kind in ("płatek", "etui"):
+    for kind in ("płatek", "etui", "dossier", "folder"):
         grp = [r for r in results if r["kind"] == kind]
         ok = [r for r in grp if r["count"]]
         print(f"{kind:<8} pozycji: {len(grp):>4}   policzonych: {len(ok):>4}   "
