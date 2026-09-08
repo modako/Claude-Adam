@@ -52,9 +52,11 @@ def is_case(text: str) -> bool:
 # Serie, w których liczba paneli wynika z samej konstrukcji wyrobu, a nie
 # z opisu. DOCUMENTA składa się tak, że finalnie leżą na sobie trzy warstwy –
 # niezależnie od tego, czy wersja ma klapę czy nie.
-SERIES_PANELS = {
-    "documenta": 3,
-}
+SERIES_PANELS = [
+    (re.compile(r'\bdocumenta', re.I), 3),   # teczka na dokumenty
+    (re.compile(r'\bUP[_\s]', re.I), 3),     # UP_8"/10"/13"/15" – klapa zawija się na wierzch
+    (re.compile(r'press\s+TAB', re.I), 3),
+]
 
 
 def case_panels(text: str, name: str = "") -> int:
@@ -66,9 +68,8 @@ def case_panels(text: str, name: str = "") -> int:
     Kieszeń zajmuje część powierzchni i nie decyduje o tym, jak wyrób leży
     w kartonie, więc nie doliczamy za nią panelu.
     """
-    low = (name or "").lower()
-    for series, panels in SERIES_PANELS.items():
-        if series in low:
+    for pattern, panels in SERIES_PANELS:
+        if pattern.search(name or ""):
             return panels
     return 2
 
@@ -84,9 +85,8 @@ DOSSIER_NAME = re.compile(r'\bDOSSIER\b', re.I)
 # przez użytkownika, niezależna od rodzaju filcu.
 FOLDER_THICKNESS_MM = 25.0
 
-# Dossier nie ma ringów, jest tylko składany. Jako teczka składa się tak,
-# że finalnie leżą na sobie trzy warstwy materiału.
-DOSSIER_PANELS = 3
+# Dossier nie ma ringów, jest tylko składany – dwa panele złożonej teczki.
+DOSSIER_PANELS = 2
 
 
 def is_folder(name: str) -> bool:
