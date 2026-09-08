@@ -96,7 +96,7 @@ def analyse(path: str) -> list[dict]:
         elif plaskie.is_flat_sheet(block["text"]):
             kind, panels = "płatek", None
         elif plaskie.is_case(block["text"]):
-            kind, panels = "etui", plaskie.case_panels(block["text"])
+            kind, panels = "etui", plaskie.case_panels(block["text"], names)
         else:
             continue
 

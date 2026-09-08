@@ -54,12 +54,26 @@ def is_case(text: str) -> bool:
     return bool(ETUI.search(text or ""))
 
 
-def case_panels(text: str) -> int:
+# Serie, w których liczba paneli wynika z samej konstrukcji wyrobu, a nie
+# z opisu. DOCUMENTA składa się tak, że finalnie leżą na sobie trzy warstwy –
+# niezależnie od tego, czy wersja ma klapę czy nie.
+SERIES_PANELS = {
+    "documenta": 3,
+}
+
+
+def case_panels(text: str, name: str = "") -> int:
     """Ile warstw materiału ma ścianka etui.
 
-    Pusty pokrowiec jest uszyty z dwóch paneli. Wersje "with pocket" albo
-    "with flap" mają trzeci panel, więc leżą grubiej.
+    Najpierw sprawdzamy serię: jeśli wiemy, jak dany model się składa,
+    ta wiedza ma pierwszeństwo przed opisem. Poza tym pusty pokrowiec jest
+    uszyty z dwóch paneli, a wersje "with pocket" albo "with flap" mają
+    trzeci panel, więc leżą grubiej.
     """
+    low = (name or "").lower()
+    for series, panels in SERIES_PANELS.items():
+        if series in low:
+            return panels
     return 3 if ETUI_EXTRA_PANEL.search(text or "") else 2
 
 
