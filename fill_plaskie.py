@@ -35,50 +35,78 @@ _s = lambda v: "" if v is None else str(v).strip()
 _base = lambda c: c.rsplit("/", 1)[0] if "/" in c else c
 
 
-def analyse(path: str) -> list[dict]:
-    """Zwraca wynik dla każdej pozycji będącej płaskim płatkiem materiału."""
+def read_blocks(path: str) -> list[dict]:
+    """Rozkłada arkusz na bloki produktowe.
+
+    Arkusz jest zbudowany blokowo: wiersz z wypełnioną kolumną Size otwiera
+    nowy produkt i niesie nazwę, opis i wymiary. Kolejne wiersze bez rozmiaru
+    to warianty tego samego produktu – dzielą z nim nazwę, opis i wymiary,
+    ale KAŻDY MA WŁASNY MATERIAŁ, a więc i własną grubość. Opis produktu bywa
+    dopisany w kolejnych wierszach bloku ("2-layer sewn"), więc do rozpoznania
+    konstrukcji bierzemy tekst z całego bloku.
+
+    Wiersz bez kodu artykułu (nagłówek sekcji, notka) zamyka bieżący blok.
+    """
     ws = openpyxl.load_workbook(path, data_only=True)["Arkusz1"]
-    rows = [(r, [ws.cell(row=r, column=c + 1).value for c in range(6)])
-            for r in range(HEADER_ROW + 1, ws.max_row + 1)]
-    prods = [(r, v) for r, v in rows if _s(v[4])]
+    blocks, cur = [], None
 
-    # warianty kolorystyczne dzielą nazwę, opis, rozmiar i materiał
-    groups = collections.defaultdict(list)
-    for _, v in prods:
-        groups[_base(_s(v[4]))].append(v)
+    for r in range(HEADER_ROW + 1, ws.max_row + 1):
+        v = [ws.cell(row=r, column=c + 1).value for c in range(6)]
+        name, desc, size, code, material = (_s(v[0]), _s(v[1]), _s(v[2]),
+                                            _s(v[4]), _s(v[5]))
 
+        if not code:                       # nagłówek sekcji albo pusty wiersz
+            if not (name or desc):
+                cur = None
+            elif cur is not None:
+                cur = None                 # notka między produktami kończy blok
+            continue
+
+        if size or cur is None:            # rozmiar otwiera nowy produkt
+            cur = {"size": size, "text": "", "rows": []}
+            blocks.append(cur)
+
+        cur["text"] += " " + name + " " + desc
+        cur["rows"].append({"row": r, "code": code, "material": material,
+                            "name": name, "desc": desc})
+
+    return blocks
+
+
+def analyse(path: str) -> list[dict]:
+    """Wynik dla każdego wariantu będącego płaskim płatkiem materiału."""
     out = []
-    for row, v in prods:
-        grp = groups[_base(_s(v[4]))]
-        pick = lambda i: _s(v[i]) or next((_s(x[i]) for x in grp if _s(x[i])), "")
-        size, material = pick(2), pick(5)
-
-        flat = cf.parse_flat_size(size)
-        if not flat:
-            continue
-        # o kwalifikacji decyduje opis całej rodziny, nie pojedynczego wiersza
-        text = " ".join(_s(x[0]) + " " + _s(x[1]) for x in grp)
-        if not plaskie.is_flat_sheet(text):
+    for block in read_blocks(path):
+        flat = cf.parse_flat_size(block["size"])
+        if not flat or not plaskie.is_flat_sheet(block["text"]):
             continue
 
-        mm, basis = plaskie.piece_thickness_mm(material, text)
-        rec = {"row": row, "code": _s(v[4]),
-               "name": pick(0), "desc": pick(1), "size": size,
-               "material": material, "basis": basis, "mm": mm,
-               "count": None, "per_layer": None, "stack": None, "why": ""}
+        # materiał wariantu; gdy pusty, bierzemy z pierwszego wiersza bloku
+        default_mat = next((r["material"] for r in block["rows"] if r["material"]), "")
+        header = block["rows"][0]
 
-        if mm is None:
-            rec["why"] = basis
+        for item in block["rows"]:
+            material = item["material"] or default_mat
+            mm, basis = plaskie.piece_thickness_mm(material, block["text"])
+            rec = {"row": item["row"], "code": item["code"],
+                   "name": item["name"] or header["name"],
+                   "desc": item["desc"] or header["desc"],
+                   "size": block["size"], "material": material,
+                   "basis": basis, "mm": mm,
+                   "count": None, "per_layer": None, "stack": None, "why": ""}
+
+            if mm is None:
+                rec["why"] = basis
+                out.append(rec)
+                continue
+
+            fit = cf.fit_in_carton(CARTON_CM, (flat[0], flat[1], mm / 10.0),
+                                   flat_only=True)
+            rec.update(count=fit.count or None, per_layer=fit.per_layer,
+                       stack=fit.layers)
+            if not fit.count:
+                rec["why"] = "nie mieści się na dnie kartonu"
             out.append(rec)
-            continue
-
-        fit = cf.fit_in_carton(CARTON_CM, (flat[0], flat[1], mm / 10.0),
-                               flat_only=True)
-        rec.update(count=fit.count or None, per_layer=fit.per_layer,
-                   stack=fit.layers)
-        if not fit.count:
-            rec["why"] = "nie mieści się na dnie kartonu"
-        out.append(rec)
     return out
 
 
