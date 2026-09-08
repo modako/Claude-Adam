@@ -64,24 +64,75 @@ def layer_count(text: str) -> int:
 
 _RE_MM = re.compile(r'(\d+(?:[.,]\d+)?)\s*mm', re.I)
 
+# Grubości materiałów, których arkusz nie podaje liczbowo, oraz liczba warstw,
+# w jakiej dany materiał występuje w wyrobie. Ustalone z użytkownikiem na
+# podstawie tego, jak te wyroby są faktycznie zbudowane.
+#
+#   washable paper – oklejka po OBU stronach rdzenia z filcu, czyli 2 warstwy
+#                    po 1 mm (tak jest zbudowana zarówno wersja "2-layer",
+#                    jak i "sandwich / washable paper + felt + washable paper"),
+#   recycled leather – naszyta z jednej strony, 1 warstwa 0,6 mm
+#                    (opis "2-layer coaster" = skóra + filc).
+COMPONENTS = {
+    "washable paper": {"mm": 1.0, "layers": 2},
+    "recycled leather": {"mm": 0.6, "layers": 1},
+}
 
-def material_mm(material: str) -> float | None:
-    """Grubość materiału w mm, odczytana wprost z kolumny Material.
+# Materiały bez znanej grubości – pozycja zostaje bez wyniku zamiast zgadywania.
+NO_THICKNESS = ["press board", "pressboard", "pu- leather", "pu-leather",
+                "wp/rl", "tyvek", "cotton", "neoprene", "polyester band"]
 
-    Sumujemy wszystkie liczby zapisane w mm (zwykle jest jedna). Materiały bez
-    podanej grubości – washable paper, tyvek, press board – dają None i taka
-    pozycja zostaje bez wyniku, zamiast dostać liczbę wziętą z sufitu.
-    """
-    if not material:
-        return None
-    found = _RE_MM.findall(material)
+
+def _felt_mm(material: str) -> float | None:
+    """Grubość rdzenia – jedyna liczba podana wprost w kolumnie Material."""
+    found = _RE_MM.findall(material or "")
     if not found:
         return None
     return sum(float(x.replace(",", ".")) for x in found)
 
 
-def piece_thickness_mm(material: str, text: str) -> tuple[float | None, int]:
-    """Grubość jednej sztuki = grubość materiału x liczba warstw."""
-    mm = material_mm(material)
-    layers = layer_count(text)
-    return (None if mm is None else mm * layers), layers
+def piece_thickness_mm(material: str, text: str) -> tuple[float | None, str]:
+    """Grubość jednej sztuki wraz z opisem, z czego się składa.
+
+    Wyrób jednorodny: grubość materiału razy liczba warstw z opisu
+    ("2-layer" / "double" = podwójna, "3-layer" / "sandwich" = potrójna).
+
+    Wyrób złożony ("A + B"): grubość rdzenia plus warstwy doklejone/naszyte,
+    wg tabeli COMPONENTS. Tutaj liczba warstw wynika z konstrukcji wyrobu,
+    a nie z mnożenia całości przez liczbę z opisu.
+    """
+    mat = (material or "").lower()
+    core = _felt_mm(material)
+
+    # materiał jednorodny bez liczby w opisie, ale o znanej grubości
+    # (np. sam "washable paper") – rdzeniem jest ten materiał
+    if core is None and "+" not in (material or ""):
+        hit = next((k for k in COMPONENTS if k in mat), None)
+        if hit:
+            n = layer_count(text)
+            mm = COMPONENTS[hit]["mm"] * n
+            return mm, (f"{hit} {COMPONENTS[hit]['mm']:g} mm x {n} warstw"
+                        if n > 1 else f"{hit} {COMPONENTS[hit]['mm']:g} mm")
+    if core is None:
+        return None, "brak grubości rdzenia"
+
+    # wyrób złożony rozpoznajemy po zapisie "A + B"; materiał jednorodny
+    # (np. sama "recycled leather 0,6mm") ma już swoją grubość w liczbie
+    composite = "+" in (material or "")
+    extras, parts = 0.0, [f"rdzeń {core:g} mm"]
+    if composite:
+        for name, spec in COMPONENTS.items():
+            if name in mat:
+                extras += spec["mm"] * spec["layers"]
+                parts.append(f"{name} {spec['layers']}x{spec['mm']:g} mm")
+
+    # składnik o nieznanej grubości dyskwalifikuje pozycję
+    for unknown in NO_THICKNESS:
+        if unknown in mat:
+            return None, f"nieznana grubość: {unknown}"
+
+    if extras > 0:                       # wyrób złożony – warstwy są w materiale
+        return core + extras, " + ".join(parts)
+
+    n = layer_count(text)                # wyrób jednorodny – warstwy z opisu
+    return core * n, (f"{core:g} mm x {n} warstw" if n > 1 else f"{core:g} mm")

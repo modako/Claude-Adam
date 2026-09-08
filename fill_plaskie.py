@@ -61,14 +61,14 @@ def analyse(path: str) -> list[dict]:
         if not plaskie.is_flat_sheet(text):
             continue
 
-        mm, layers = plaskie.piece_thickness_mm(material, text)
+        mm, basis = plaskie.piece_thickness_mm(material, text)
         rec = {"row": row, "code": _s(v[4]),
                "name": pick(0), "desc": pick(1), "size": size,
-               "material": material, "layers": layers, "mm": mm,
+               "material": material, "basis": basis, "mm": mm,
                "count": None, "per_layer": None, "stack": None, "why": ""}
 
         if mm is None:
-            rec["why"] = "materiał bez podanej grubości"
+            rec["why"] = basis
             out.append(rec)
             continue
 
@@ -126,18 +126,18 @@ def main() -> None:
         print(f"     w.{r['row']:<5} {r['name'][:22]:<22} {r['size'][:16]:<16} "
               f"{r['material'][:26]:<26} – {r['why']}")
 
-    print(f"\n{'nazwa':<22}{'opis':<28}{'rozmiar':<16}{'gr.':>7}{'w':>3}"
-          f"{'/warstwę':>9}{'warstw':>8}{'SZTUK':>8}")
-    print("-" * 101)
+    print(f"\n{'nazwa':<20}{'opis':<26}{'rozmiar':<15}{'gr.':>7}"
+          f"{'/warstwę':>9}{'warstw':>8}{'SZTUK':>8}   z czego")
+    print("-" * 128)
     seen = set()
     for r in sorted(done, key=lambda x: x["row"]):
         key = (r["name"], r["size"], r["mm"])
         if key in seen:
             continue
         seen.add(key)
-        print(f"{r['name'][:21]:<22}{r['desc'][:27]:<28}{r['size'][:15]:<16}"
-              f"{r['mm']:>5g}mm{r['layers']:>3}{r['per_layer']:>9}"
-              f"{r['stack']:>8}{r['count']:>8}")
+        print(f"{r['name'][:19]:<20}{r['desc'][:25]:<26}{r['size'][:14]:<15}"
+              f"{r['mm']:>5g}mm{r['per_layer']:>9}"
+              f"{r['stack']:>8}{r['count']:>8}   {r['basis']}")
 
 
 if __name__ == "__main__":
