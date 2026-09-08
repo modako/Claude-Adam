@@ -73,17 +73,22 @@ _RE_MM = re.compile(r'(\d+(?:[.,]\d+)?)\s*mm', re.I)
 #                    jak i "sandwich / washable paper + felt + washable paper"),
 #   recycled leather – naszyta z jednej strony, 1 warstwa 0,6 mm
 #                    (opis "2-layer coaster" = skóra + filc).
+# Kolejność ma znaczenie: dopasowanie idzie po pierwszym trafieniu, więc
+# zapisy bardziej szczegółowe ("hard tyvek") muszą stać przed ogólnymi.
 COMPONENTS = {
-    "washable paper": {"mm": 1.0, "layers": 2},
-    "recycled leather": {"mm": 0.6, "layers": 1},
-    "pu- leather": {"mm": 1.0, "layers": 1},   # grubość podana przez użytkownika
+    "washable paper": {"mm": 1.0, "layers": 2},   # oklejka po obu stronach rdzenia
+    "recycled leather": {"mm": 0.6, "layers": 1}, # naszyta z jednej strony
+    "wp/rl": {"mm": 0.6, "layers": 1},            # wariant liczony jako RL
+    "pu- leather": {"mm": 1.0, "layers": 1},
     "pu-leather": {"mm": 1.0, "layers": 1},
-    "tyvek": {"mm": 0.1, "layers": 1},         # grubość podana przez użytkownika
+    "press board": {"mm": 1.0, "layers": 1},      # usztywnienie z jednej strony
+    "pressboard": {"mm": 1.0, "layers": 1},
+    "hard tyvek": {"mm": 0.3, "layers": 1},
+    "tyvek": {"mm": 0.1, "layers": 1},
 }
 
 # Materiały bez znanej grubości – pozycja zostaje bez wyniku zamiast zgadywania.
-NO_THICKNESS = ["press board", "pressboard", "wp/rl",
-                "cotton", "neoprene", "polyester band"]
+NO_THICKNESS = ["cotton", "neoprene", "polyester band"]
 
 
 def _felt_mm(material: str) -> float | None:
