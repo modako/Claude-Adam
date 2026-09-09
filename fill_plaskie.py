@@ -38,6 +38,12 @@ HEADER_ROW = 13
 # jedną warstwą papieru z jednej strony.
 PAPP_FLAT_ROWS = set(range(210, 222))
 
+# Torby laptopowe FORMAT (I/II/III/IV) - ustalone z użytkownikiem: całkowita
+# grubość sztuki to stałe 2,5 cm, niezależnie od materiału i rodzaju rączek
+# (filc/taśma/skóra) - rączki nie wliczają się do grubości.
+FORMAT_FLAT_ROWS = set(range(535, 547)) | {1177, 1178}
+FORMAT_THICKNESS_MM = 25.0
+
 _s = lambda v: "" if v is None else str(v).strip()
 _base = lambda c: c.rsplit("/", 1)[0] if "/" in c else c
 
@@ -90,16 +96,26 @@ def analyse(path: str) -> list[dict]:
     """
     out = []
     for block in read_blocks(path):
+        rows_in_block = {r["row"] for r in block["rows"]}
+        is_papp_flat = bool(rows_in_block & PAPP_FLAT_ROWS)
+        is_format_flat = bool(rows_in_block & FORMAT_FLAT_ROWS)
+
         flat = cf.parse_flat_size(block["size"])
+        if not flat and is_format_flat:
+            # rozmiar zapisany trójwymiarowo (np. "30x40x5 cm") - bierzemy
+            # tylko długość i szerokość, bo głębokość zastępujemy ustaloną
+            # stałą grubością torby
+            m = re.match(r'\s*(?:ca\.?|c\.)?\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*'
+                        r'(\d+(?:[.,]\d+)?)', block["size"], re.I)
+            if m:
+                flat = (float(m.group(1).replace(",", ".")),
+                        float(m.group(2).replace(",", ".")))
         if not flat:
             continue
 
-        rows_in_block = {r["row"] for r in block["rows"]}
-        is_papp_flat = bool(rows_in_block & PAPP_FLAT_ROWS)
-
         # teczki rozpoznajemy po nazwie – opis nie odróżnia dossieru od folderu
         names = " ".join(r["name"] for r in block["rows"])
-        if is_papp_flat:
+        if is_papp_flat or is_format_flat:
             kind, panels = "płatek", None
         elif plaskie.is_folder(names):
             kind, panels = "folder", None
@@ -133,6 +149,11 @@ def analyse(path: str) -> list[dict]:
                 mm = 2 * plaskie.FELT_LAYER_MM + 1.0
                 basis = (f"2 x filc {plaskie.FELT_LAYER_MM:g} mm + papier 1 mm "
                         "(ustalone przez użytkownika)")
+            elif is_format_flat:
+                # ustalone z użytkownikiem: stała grubość 2,5 cm dla całej
+                # torby, niezależnie od materiału i rodzaju rączek
+                mm = FORMAT_THICKNESS_MM
+                basis = "stała grubość 2,5 cm (ustalone przez użytkownika)"
             else:
                 mm, basis = plaskie.piece_thickness_mm(material, block["text"],
                                                        panels)
