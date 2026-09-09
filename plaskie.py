@@ -138,7 +138,7 @@ _RE_MM = re.compile(r'(\d+(?:[.,]\d+)?)\s*mm', re.I)
 # "polyester  3mm" (bez słowa "felt") to ten sam skrót co "polyester felt" -
 # taki zapis występuje w kilku wierszach arkusza.
 FELT_RE = re.compile(r'felt|polyester\s+\d', re.I)
-FELT_LAYER_MM = 5.0
+FELT_LAYER_MM = 4.0
 
 # Grubości materiałów, których arkusz nie podaje liczbowo, oraz liczba warstw,
 # w jakiej dany materiał występuje w wyrobie. Ustalone z użytkownikiem na

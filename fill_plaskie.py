@@ -31,6 +31,13 @@ import plaskie
 CARTON_CM = (40.0, 50.0, 60.0)     # wymiary wewnętrzne kartonu paletowego
 HEADER_ROW = 13
 
+# Wiersze o konstrukcji ustalonej ręcznie z użytkownikiem, bo nie da się jej
+# wyprowadzić z ogólnych reguł tekstowych: papp+ TAB 8", papp+ PHONE i
+# papp+ SEAL card to nie "etui" ani "card holder" w sensie ogólnej reguły,
+# tylko płaski laminat - dwie warstwy filcu (dowolnego rodzaju) oklejone
+# jedną warstwą papieru z jednej strony.
+PAPP_FLAT_ROWS = set(range(210, 222))
+
 _s = lambda v: "" if v is None else str(v).strip()
 _base = lambda c: c.rsplit("/", 1)[0] if "/" in c else c
 
@@ -87,9 +94,14 @@ def analyse(path: str) -> list[dict]:
         if not flat:
             continue
 
+        rows_in_block = {r["row"] for r in block["rows"]}
+        is_papp_flat = bool(rows_in_block & PAPP_FLAT_ROWS)
+
         # teczki rozpoznajemy po nazwie – opis nie odróżnia dossieru od folderu
         names = " ".join(r["name"] for r in block["rows"])
-        if plaskie.is_folder(names):
+        if is_papp_flat:
+            kind, panels = "płatek", None
+        elif plaskie.is_folder(names):
             kind, panels = "folder", None
         elif plaskie.is_dossier(names):
             kind, panels = "dossier", None
@@ -114,6 +126,13 @@ def analyse(path: str) -> list[dict]:
                       else plaskie.DOSSIER_THICKNESS_MM)
                 basis = ("4 warstwy + ringi – stała grubość" if kind == "folder"
                          else "4 warstwy – stała grubość") + f" {mm / 10:g} cm"
+            elif is_papp_flat:
+                # ustalone z użytkownikiem: 2 warstwy filcu (dowolny rodzaj)
+                # + 1 warstwa papieru, niezależnie od tego, który wariant
+                # filcu jest w tym konkretnym wierszu
+                mm = 2 * plaskie.FELT_LAYER_MM + 1.0
+                basis = (f"2 x filc {plaskie.FELT_LAYER_MM:g} mm + papier 1 mm "
+                        "(ustalone przez użytkownika)")
             else:
                 mm, basis = plaskie.piece_thickness_mm(material, block["text"],
                                                        panels)
