@@ -92,7 +92,7 @@ def analyse(path: str) -> list[dict]:
         if plaskie.is_folder(names):
             kind, panels = "folder", None
         elif plaskie.is_dossier(names):
-            kind, panels = "dossier", plaskie.dossier_panels(block["text"])
+            kind, panels = "dossier", None
         elif plaskie.is_flat_sheet(block["text"]):
             kind, panels = "płatek", None
         elif plaskie.is_case(block["text"]):
@@ -106,10 +106,14 @@ def analyse(path: str) -> list[dict]:
 
         for item in block["rows"]:
             material = item["material"] or default_mat
-            if kind == "folder":
-                # o grubości decydują ringi, nie filc – wartość stała
-                mm = plaskie.FOLDER_THICKNESS_MM
-                basis = f"ringi – stała grubość {mm / 10:g} cm"
+            if kind in ("folder", "dossier"):
+                # teczki mają ustaloną grubość, niezależną od rodzaju filcu:
+                # dossier to cztery warstwy złożonego materiału, folder to
+                # te same cztery warstwy plus metalowe ringi
+                mm = (plaskie.FOLDER_THICKNESS_MM if kind == "folder"
+                      else plaskie.DOSSIER_THICKNESS_MM)
+                basis = ("4 warstwy + ringi – stała grubość" if kind == "folder"
+                         else "4 warstwy – stała grubość") + f" {mm / 10:g} cm"
             else:
                 mm, basis = plaskie.piece_thickness_mm(material, block["text"],
                                                        panels)
@@ -136,7 +140,14 @@ def analyse(path: str) -> list[dict]:
 
 
 def write_column_d(src: str, dst: str, results: list[dict]) -> int:
-    """Wpisuje liczby do kolumny D, nie ruszając reszty pliku."""
+    """Wpisuje liczby do kolumny D, nie ruszając reszty pliku.
+
+    Obsługuje oba zapisy komórki w XML-u: pustą samozamykającą
+    (`<c r="D15" s="227"/>`) oraz już zawierającą wartość
+    (`<c r="D15" s="227"><v>123</v></c>`) - to drugie zdarza się, gdy plik
+    wejściowy ma już wcześniej wpisane liczby (własne albo z poprzedniego
+    przebiegu tego skryptu), które teraz aktualizujemy.
+    """
     values = {r["row"]: r["count"] for r in results if r["count"]}
     with zipfile.ZipFile(src) as z:
         names = z.namelist()
@@ -153,7 +164,11 @@ def write_column_d(src: str, dst: str, results: list[dict]) -> int:
         written += 1
         return f'<c r="D{row}"{m.group("style") or ""}><v>{values[row]}</v></c>'
 
+    # pusta komórka: <c r="D15" s="227"/>
     sheet = re.sub(r'<c r="D(?P<row>\d+)"(?P<style>[^>/]*)/>', patch, sheet)
+    # komórka z istniejącą wartością: <c r="D15" s="227"><v>123</v></c>
+    sheet = re.sub(r'<c r="D(?P<row>\d+)"(?P<style>[^>]*)>\s*<v>[^<]*</v>\s*</c>',
+                   patch, sheet)
     if written != len(values):
         raise RuntimeError(f"wpisano {written} z {len(values)} wartości")
 

@@ -81,12 +81,13 @@ def case_panels(text: str, name: str = "") -> int:
 FOLDER_NAME = re.compile(r'\bFOLDER\b', re.I)
 DOSSIER_NAME = re.compile(r'\bDOSSIER\b', re.I)
 
-# Folder ma metalowe ringi i to one decydują o grubości – wartość podana
-# przez użytkownika, niezależna od rodzaju filcu.
+# Folder to złożona teczka (te same cztery warstwy co dossier) plus metalowe
+# ringi. Ustalona grubość 2,5 cm na sztukę, niezależna od rodzaju filcu.
 FOLDER_THICKNESS_MM = 25.0
 
-# Dossier nie ma ringów, jest tylko składany – dwa panele złożonej teczki.
-DOSSIER_PANELS = 2
+# Dossier nie ma ringów, jest tylko składany. Złożony daje cztery warstwy
+# materiału – ustalona grubość 2 cm na sztukę, niezależna od rodzaju filcu.
+DOSSIER_THICKNESS_MM = 20.0
 
 
 def is_folder(name: str) -> bool:
@@ -99,9 +100,7 @@ def is_dossier(name: str) -> bool:
     return bool(DOSSIER_NAME.search(name or ""))
 
 
-def dossier_panels(text: str = "") -> int:
-    """Ile warstw materiału leży na sobie w złożonym dossierze."""
-    return DOSSIER_PANELS
+
 
 
 # Ile warstw materiału ma jedna sztuka.
@@ -132,6 +131,14 @@ def layer_count(text: str) -> int:
 
 
 _RE_MM = re.compile(r'(\d+(?:[.,]\d+)?)\s*mm', re.I)
+
+# Filc: niezależnie od gramatury/rodzaju (wool felt 3mm, recycled felt 4mm,
+# polyester felt 8mm...) każda warstwa liczy się jako stałe 0,5 cm.
+# Reguła ustalona z użytkownikiem: 2 warstwy = 1 cm, 3 warstwy = 1,5 cm itd.
+# "polyester  3mm" (bez słowa "felt") to ten sam skrót co "polyester felt" -
+# taki zapis występuje w kilku wierszach arkusza.
+FELT_RE = re.compile(r'felt|polyester\s+\d', re.I)
+FELT_LAYER_MM = 5.0
 
 # Grubości materiałów, których arkusz nie podaje liczbowo, oraz liczba warstw,
 # w jakiej dany materiał występuje w wyrobie. Ustalone z użytkownikiem na
@@ -194,6 +201,11 @@ def piece_thickness_mm(material: str, text: str,
     if core is None:
         return None, "brak grubości rdzenia"
 
+    # filc: gramatura z arkusza jest ignorowana - liczy się stała 0,5 cm/warstwę
+    is_felt = bool(FELT_RE.search(mat))
+    if is_felt:
+        core = FELT_LAYER_MM
+
     # wyrób złożony rozpoznajemy po zapisie "A + B"; materiał jednorodny
     # (np. sama "recycled leather 0,6mm") ma już swoją grubość w liczbie
     composite = "+" in (material or "")
@@ -211,8 +223,12 @@ def piece_thickness_mm(material: str, text: str,
 
     n = panels if panels else (1 if extras > 0 else layer_count(text))
     body = core * n
+    felt_tag = " (filc, stała grubość/warstwę)" if is_felt else ""
     if n > 1:
-        parts[0] = f"rdzeń {core:g} mm x {n}"
+        parts[0] = f"rdzeń {core:g} mm x {n}{felt_tag}"
+    else:
+        parts[0] = f"rdzeń {core:g} mm{felt_tag}"
     if extras > 0:
         return body + extras, " + ".join(parts)
-    return body, (f"{core:g} mm x {n} warstw" if n > 1 else f"{core:g} mm")
+    return body, (f"{core:g} mm x {n} warstw{felt_tag}" if n > 1
+                  else f"{core:g} mm{felt_tag}")
