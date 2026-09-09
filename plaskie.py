@@ -161,10 +161,11 @@ COMPONENTS = {
     "pressboard": {"mm": 1.0, "layers": 1},
     "hard tyvek": {"mm": 0.3, "layers": 1},
     "tyvek": {"mm": 0.1, "layers": 1},
+    "neoprene": {"mm": 2.0, "layers": 1},         # grubość podana przez użytkownika
 }
 
 # Materiały bez znanej grubości – pozycja zostaje bez wyniku zamiast zgadywania.
-NO_THICKNESS = ["cotton", "neoprene", "polyester band"]
+NO_THICKNESS = ["cotton", "polyester band"]
 
 
 def _felt_mm(material: str) -> float | None:

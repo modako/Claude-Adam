@@ -164,11 +164,14 @@ def write_column_d(src: str, dst: str, results: list[dict]) -> int:
         written += 1
         return f'<c r="D{row}"{m.group("style") or ""}><v>{values[row]}</v></c>'
 
-    # pusta komórka: <c r="D15" s="227"/>
-    sheet = re.sub(r'<c r="D(?P<row>\d+)"(?P<style>[^>/]*)/>', patch, sheet)
-    # komórka z istniejącą wartością: <c r="D15" s="227"><v>123</v></c>
-    sheet = re.sub(r'<c r="D(?P<row>\d+)"(?P<style>[^>]*)>\s*<v>[^<]*</v>\s*</c>',
-                   patch, sheet)
+    # jeden wzorzec na oba warianty zapisu komórki - pusta samozamykająca
+    # (<c r="D15" s="227"/>) albo już z wartością (<c ...><v>123</v></c>).
+    # Osobne dwa re.sub dopasowałyby tę samą komórkę dwa razy: po pierwszym
+    # podstawieniu pusta komórka zamienia się w postać z wartością i druga
+    # runda złapałaby ją ponownie, podwajając licznik `written`.
+    pattern = (r'<c r="D(?P<row>\d+)"(?P<style>[^>/]*)(?:/>'
+              r'|>\s*<v>[^<]*</v>\s*</c>)')
+    sheet = re.sub(pattern, patch, sheet)
     if written != len(values):
         raise RuntimeError(f"wpisano {written} z {len(values)} wartości")
 
