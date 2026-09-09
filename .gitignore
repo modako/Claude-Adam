@@ -3,3 +3,4 @@ __pycache__/
 
 # dane biznesowe klienta - repo jest publiczne
 *.xlsx
+BOOGIE_status_serii.pdf
