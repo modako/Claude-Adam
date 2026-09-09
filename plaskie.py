@@ -81,6 +81,15 @@ def case_panels(text: str, name: str = "") -> int:
 FOLDER_NAME = re.compile(r'\bFOLDER\b', re.I)
 DOSSIER_NAME = re.compile(r'\bDOSSIER\b', re.I)
 
+# Foldery serii TRIP i STANDARD - rozpoznawane po nazwie + słowie "folder"
+# w opisie (odróżnia je od innych produktów tej samej marki, np. TRIP fly/
+# pass/id/beauty, które nie są folderami). Ustalone z użytkownikiem: 2 warstwy
+# filcu zszyte ze sobą + 1 warstwa na klapę/zapięcie (rzep, gumka, magnes,
+# klips - wszystko to liczy się jako jedna dodatkowa warstwa, niezależnie
+# od konkretnego mechanizmu).
+TRIP_STANDARD_NAME = re.compile(r'\bTRIP\b|\bSTANDARD\b', re.I)
+TRIP_STANDARD_PANELS = 3
+
 # Folder to złożona teczka (te same cztery warstwy co dossier) plus metalowe
 # ringi. Ustalona grubość 2,5 cm na sztukę, niezależna od rodzaju filcu.
 FOLDER_THICKNESS_MM = 25.0
@@ -98,6 +107,12 @@ def is_folder(name: str) -> bool:
 def is_dossier(name: str) -> bool:
     """Teczka składana, bez ringów – grubość liczona z materiału."""
     return bool(DOSSIER_NAME.search(name or ""))
+
+
+def is_trip_standard_folder(name: str, desc: str) -> bool:
+    """Folder serii TRIP albo STANDARD (z zapięciem), a nie inny produkt tej marki."""
+    return bool(TRIP_STANDARD_NAME.search(name or "")
+               and re.search(r'folder', desc or "", re.I))
 
 
 

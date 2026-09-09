@@ -44,6 +44,14 @@ PAPP_FLAT_ROWS = set(range(210, 222))
 FORMAT_FLAT_ROWS = set(range(535, 547)) | {1177, 1178}
 FORMAT_THICKNESS_MM = 25.0
 
+# SCRIBA (wszystkie) i notesowe SLIDE (scriba/book/A4) - stała grubość 3,5 cm,
+# bo w środku jest jeszcze bloczek papieru. Rozpoznawane po nazwie: "SCRIBA"
+# łapie zarówno serię SCRIBA-I/II/III, jak i "SLIDE scriba" (ta sama fraza).
+# Pozostałe SLIDE (mini, R, dopp kit, pen) NIE są tu objęte - to nie są
+# notesy, więc bloczek nie ma zastosowania (do potwierdzenia z użytkownikiem).
+NOTEBOOK_BLOCK_NAME = re.compile(r'\bSCRIBA\b|\bSLIDE\s+book\b|\bSLIDE\s+A4\b', re.I)
+NOTEBOOK_BLOCK_THICKNESS_MM = 35.0
+
 _s = lambda v: "" if v is None else str(v).strip()
 _base = lambda c: c.rsplit("/", 1)[0] if "/" in c else c
 
@@ -115,12 +123,17 @@ def analyse(path: str) -> list[dict]:
 
         # teczki rozpoznajemy po nazwie – opis nie odróżnia dossieru od folderu
         names = " ".join(r["name"] for r in block["rows"])
+        is_notebook_block = bool(NOTEBOOK_BLOCK_NAME.search(names))
         if is_papp_flat or is_format_flat:
             kind, panels = "płatek", None
+        elif is_notebook_block:
+            kind, panels = "notes", None
         elif plaskie.is_folder(names):
             kind, panels = "folder", None
         elif plaskie.is_dossier(names):
             kind, panels = "dossier", None
+        elif plaskie.is_trip_standard_folder(names, block["text"]):
+            kind, panels = "etui", plaskie.TRIP_STANDARD_PANELS
         elif plaskie.is_flat_sheet(block["text"]):
             kind, panels = "płatek", None
         elif plaskie.is_case(block["text"]):
@@ -154,6 +167,10 @@ def analyse(path: str) -> list[dict]:
                 # torby, niezależnie od materiału i rodzaju rączek
                 mm = FORMAT_THICKNESS_MM
                 basis = "stała grubość 2,5 cm (ustalone przez użytkownika)"
+            elif kind == "notes":
+                # stała grubość - w środku jest bloczek papieru
+                mm = NOTEBOOK_BLOCK_THICKNESS_MM
+                basis = "stała grubość 3,5 cm - z bloczkiem (ustalone przez użytkownika)"
             else:
                 mm, basis = plaskie.piece_thickness_mm(material, block["text"],
                                                        panels)
@@ -230,7 +247,7 @@ def main() -> None:
 
     done = [r for r in results if r["count"]]
     skipped = [r for r in results if not r["count"]]
-    for kind in ("płatek", "etui", "dossier", "folder"):
+    for kind in ("płatek", "etui", "dossier", "folder", "notes"):
         grp = [r for r in results if r["kind"] == kind]
         ok = [r for r in grp if r["count"]]
         print(f"{kind:<8} pozycji: {len(grp):>4}   policzonych: {len(ok):>4}   "
