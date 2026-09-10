@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pakowanie — ile sztuk wejdzie w karton 40×50×60</title>
+<title>Pakowanie — ile sztuk wejdzie w karton</title>
 <style>
   :root {
     --bg: #F4F6F8;
@@ -147,9 +147,9 @@
     <div class="card">
       <h2>Karton</h2>
       <div class="box">
-        <span class="dims">40 × 50 × 60</span>
+        <span class="dims" id="cartonDims"></span>
         <span class="unit">cm</span>
-        <span class="sub">dł. × szer. × wys. · 120 000 cm³</span>
+        <span class="sub">dł. × szer. × wys. · <span id="cartonVolume"></span> cm³</span>
       </div>
       <p class="hint">Wymiar kartonu jest stały.</p>
     </div>
@@ -197,7 +197,7 @@
       </table>
       <p class="note">
         Każdy produkt liczony jest osobno — wynik mówi, ile sztuk <b>tego jednego</b>
-        produktu zmieści się w pustym kartonie 40 × 50 × 60 cm.
+        produktu zmieści się w pustym kartonie <span id="cartonNote"></span> cm.
         Produkty układane są warstwami: w obrębie warstwy sztuki mogą leżeć
         w dwóch ustawieniach (obrót o 90° w poziomie), a przy zaznaczonym
         „obrocie” dopuszczalne jest też położenie produktu na boku lub na sztorc.
@@ -214,17 +214,17 @@
    Pytanie brzmi „ile sztuk jednego produktu wejdzie w karton”, więc zamiast
    heurystyki upychającej zadaną liczbę sztuk liczymy to analitycznie:
 
-     1. warstwa  — ile sztuk mieści się na płaszczyźnie 40 × 50 cm, przy
-                   dopuszczeniu obu ustawień w poziomie (cięcia gilotynowe),
+     1. warstwa  — ile sztuk mieści się na dnie kartonu, przy dopuszczeniu
+                   obu ustawień w poziomie (cięcia gilotynowe),
      2. wysokość — jak ułożyć warstwy o różnej grubości, żeby wykorzystać
-                   pełne 60 cm (programowanie dynamiczne po pozostałej wysokości).
+                   pełną wysokość (programowanie dynamiczne po pozostałej wysokości).
 
    Warstwy z definicji opierają się całą powierzchnią jedna na drugiej, więc
    układ jest realny do ułożenia ręcznie.
    ========================================================================= */
 
 const EPS = 1e-9;
-const CARTON = { length: 40, width: 50, height: 60 };
+const CARTON = { length: 38, width: 48, height: 58 };
 const CARTON_VOLUME = CARTON.length * CARTON.width * CARTON.height;
 
 /* Wszystkie dopuszczalne orientacje produktu.
@@ -449,6 +449,11 @@ function run() {
 
 /* --- podpięcie kontrolek --- */
 function init() {
+  const dims = fmt(CARTON.length) + " × " + fmt(CARTON.width) + " × " + fmt(CARTON.height);
+  $("cartonDims").textContent = dims;
+  $("cartonNote").textContent = dims;
+  $("cartonVolume").textContent = fmtInt(CARTON_VOLUME);
+
   EXAMPLE.forEach(addRow);
   $("addRow").addEventListener("click", () => addRow());
   $("loadExample").addEventListener("click", () => {
