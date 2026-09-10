@@ -28,7 +28,7 @@ import openpyxl
 import carton_fit as cf
 import plaskie
 
-CARTON_CM = (40.0, 50.0, 60.0)     # wymiary wewnętrzne kartonu paletowego
+CARTON_CM = (38.0, 48.0, 58.0)     # wymiary wewnętrzne kartonu paletowego
 HEADER_ROW = 13
 
 # Wiersze o konstrukcji ustalonej ręcznie z użytkownikiem, bo nie da się jej
