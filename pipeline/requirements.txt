@@ -1,0 +1,10 @@
+# Pipeline dependencies (Python 3.11+). Versions pinned in stage 1 after first working run.
+geopandas
+shapely
+pyogrio
+pyproj
+h3
+requests
+numpy
+pandas
+pytest
