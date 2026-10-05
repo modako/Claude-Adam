@@ -68,4 +68,8 @@ Pełne prompty etapów: `docs/PROMPTY.md`. Status etapów:
 ## Uwagi o środowisku
 
 - Praca toczy się w sesjach Claude Code w chmurze (kontener tworzony na nowo w każdej sesji). Wszystko, co ma przetrwać, musi być w repo (commit + push).
-- Polityka sieci środowiska chmurowego blokowała 2026-10-05 hosty z danymi (`wfs.bdl.lasy.gov.pl`, `sdi.gdos.gov.pl`, `api.open-meteo.com`, `archive-api.open-meteo.com`, `download.geofabrik.de`, `tiles.openfreemap.org`). Przed etapem 1 trzeba je dodać do dozwolonych domen w ustawieniach środowiska. GitHub Actions nie ma tego ograniczenia.
+- Dostęp do sieci (stan na 2026-10-05, po dodaniu domen do dozwolonych w ustawieniach środowiska):
+  - działa: `wfs.bdl.lasy.gov.pl`, `api.open-meteo.com`, `archive-api.open-meteo.com`, `tiles.openfreemap.org`, `www.gov.pl`, PyPI, npm;
+  - `sdi.gdos.gov.pl`: serwer GDOŚ sam odrzuca chmurę (filtr Incapsula, 403). Pliki parków narodowych i rezerwatów pobrał ręcznie właściciel: `data/manual/gdos/` (opis w `SOURCES.md`). Nie próbuj pobierać ich automatycznie;
+  - `download.geofabrik.de`, `overpass-api.de`: połączenie zrywane po stronie serwera. Dane OSM trzeba pobrać inną drogą (do ustalenia w etapie 1).
+- Pliki źródłowe pobierane ręcznie trzymamy w `data/manual/` (wyjątek w `.gitignore`), razem ze źródłem, datą pobrania i sumą kontrolną.

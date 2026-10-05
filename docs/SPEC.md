@@ -302,6 +302,7 @@ Komórka jest **zakazana (szara)**, gdy > `ban_share_threshold` = 50% [R z promp
 | Lasy prywatne | BDL (forma własności) | **flaga „prywatny, może być zakaz”**: ostrzeżenie, nie szary |
 | Okresowe zakazy wstępu, zagrożenie pożarowe | WMS BDL | etap 6: ostrzeżenie, a jeśli da się sprawdzić automatycznie, to szary |
 
+- **Otuliny** parków narodowych i rezerwatów **nie** wchodzą do maski. W plikach GDOŚ są w tej samej warstwie co park/rezerwat i różnią się tylko dopiskiem „ - otulina” w nazwie (23 z 46 obiektów w warstwie parków, 420 z 2146 w rezerwatach). Otulina to strefa buforowa, nie zakaz wstępu ani zbioru. Szczegóły odczytu: `data/manual/gdos/SOURCES.md`.
 - Parki krajobrazowe i obszary Natura 2000 **nie** oznaczają zakazu zbioru grzybów i nie wchodzą do maski [P, do potwierdzenia w etapie 1].
 - Stały zakaz obejmuje też drzewostany nasienne, ostoje zwierząt, źródliska i powierzchnie doświadczalne (art. 26 ustawy o lasach). Włączyć, jeśli BDL je udostępnia.
 - GDOŚ zastrzega, że granice nie stanowią prawnego ustalenia; karta lasu powinna o tym wspominać.

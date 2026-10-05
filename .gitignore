@@ -4,6 +4,9 @@
 data/*
 !data/samples/
 !data/samples/**
+# Source files downloaded by hand (cannot be fetched from the cloud environment)
+!data/manual/
+!data/manual/**
 
 # Download cache (BDL, GDOS, OSM, Open-Meteo archive)
 .cache/
