@@ -40,14 +40,19 @@ jobs:
             inputs="$inputs $f"
           done
           osmium merge $inputs -o work/region.osm.pbf --overwrite
-          osmium fileinfo -e work/region.osm.pbf | grep -i timestamp | tee work/timestamp.txt
+          osmium fileinfo -g header.option.osmosis_replication_timestamp work/region.osm.pbf | tee work/timestamp.txt
 
           osmium tags-filter work/region.osm.pbf a/landuse=military a/military -o work/military.osm.pbf --overwrite
           osmium tags-filter work/region.osm.pbf a/landuse=forest a/natural=wood -o work/forest.osm.pbf --overwrite
 
+          # Relation members pulled in by tags-filter (e.g. water, grassland) are dropped by -where.
+          declare -A where=(
+            [military]="landuse='military' OR other_tags LIKE '%\"military\"=>%'"
+            [forest]="landuse='forest' OR \"natural\"='wood'"
+          )
           for layer in military forest; do
             ogr2ogr -f GPKG "work/${layer}.gpkg" "work/${layer}.osm.pbf" multipolygons \
-              -t_srs EPSG:2180 -simplify 1 -nln "$layer" \
+              -t_srs EPSG:2180 -simplify 1 -nln "$layer" -where "${where[$layer]}" \
               -select osm_id,osm_way_id,name,landuse,natural,other_tags
             ogrinfo -so "work/${layer}.gpkg" "$layer" | grep -E "Feature Count"
           done
