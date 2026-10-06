@@ -1,0 +1,8 @@
+# Pilot region. Adding a voivodeship = adding entries here (see CLAUDE.md, stage 6).
+name: lodzkie
+# Voivodeship names as in geoBoundaries POL ADM1 (field shapeName).
+voivodeships:
+  - "Łódź Voivodeship"
+# Geofabrik extract paths used by the OSM workflow (.github/workflows/osm-extract.yml).
+geofabrik:
+  - europe/poland/lodzkie
