@@ -9,6 +9,10 @@ from pipeline.paths import CACHE_DIR, MANUAL_DIR
 
 ATTRIBUTION = "© autorzy OpenStreetMap, ODbL 1.0"
 
+# military=* values treated as no-entry areas. Single bunkers, trenches etc. are often historic sites open to visitors.
+MILITARY_BANNED = {"danger_area", "training_area", "range", "base", "barracks", "airfield", "naval_base",
+                   "obstacle_course", "office", "depot", "ammunition"}
+
 
 def _layer(name: str) -> gpd.GeoDataFrame:
     target = CACHE_DIR / "osm" / f"{name}.gpkg"
@@ -34,7 +38,8 @@ def data_timestamp() -> str:
 
 def military(region: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     gdf = _layer("military")
-    is_military = (gdf["landuse"] == "military") | gdf["other_tags"].map(lambda t: _tag(t, "military") is not None)
+    kind = gdf["military"] if "military" in gdf.columns else gdf["other_tags"].map(lambda t: _tag(t, "military"))
+    is_military = (gdf["landuse"] == "military") | kind.isin(MILITARY_BANNED)
     gdf = gdf[is_military]
     gdf = gdf.assign(kind="wojsko", geometry=gdf.geometry.make_valid())
     return gdf[gdf.intersects(region.geometry.iloc[0])][["kind", "name", "geometry"]].reset_index(drop=True)

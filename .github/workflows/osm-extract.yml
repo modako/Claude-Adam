@@ -49,7 +49,7 @@ jobs:
           for layer in military forest; do
             ogr2ogr -f GPKG "work/${layer}.gpkg" "work/${layer}.osm.pbf" multipolygons \
               -t_srs EPSG:2180 -simplify 1 -nln "$layer" \
-              -select osm_id,osm_way_id,name,landuse,natural,other_tags
+              -select osm_id,osm_way_id,name,landuse,natural,military,other_tags
             ogrinfo -so "work/${layer}.gpkg" "$layer" | grep -E "Feature Count"
           done
 
