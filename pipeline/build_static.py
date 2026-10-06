@@ -56,7 +56,7 @@ def main() -> None:
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     generated = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     geojson = cells_geojson(cells, species, params, generated)
-    (STATIC_DIR / "cells.geojson").write_text(json.dumps(geojson, ensure_ascii=False, separators=(",", ":")),
+    (STATIC_DIR / "cells.geojson").write_text(json.dumps(geojson, ensure_ascii=False, separators=(",", ":"), allow_nan=False),
                                               encoding="utf-8")
     meta = {
         "params_version": params["params_version"],
@@ -72,7 +72,7 @@ def main() -> None:
         json.dumps(attribution(bdl_source, generated), ensure_ascii=False, indent=2), encoding="utf-8")
 
     PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
-    write_preview(geojson, region, control_places(cells), region_stats(cells),
+    write_preview(geojson, region, control_places(cells, region_cfg.get("control_places", [])), region_stats(cells),
                   {"bdl": bdl_source["downloaded"], "gdos": gdos.DOWNLOADED}, PREVIEW_DIR / "preview.html")
 
     summary(cells, species)
@@ -98,14 +98,18 @@ def cells_geojson(cells: pd.DataFrame, species: list[str], params: dict, generat
             "private_maybe": bool(row.private_maybe),
             "non_lp_share": round(row.non_lp_share, 2),
             "forest_ha": round(row.forest_ha, 1),
-            "trees": row.trees,
+            "trees": _str_or_none(row.trees),
             "age": None if row.age_mean is None or pd.isna(row.age_mean) else round(row.age_mean),
-            "habitat": row.habitat,
+            "habitat": _str_or_none(row.habitat),
         }
         features.append({"type": "Feature", "geometry": {"type": "Polygon", "coordinates": [ring]},
                          "properties": props})
     return {"type": "FeatureCollection", "params_version": params["params_version"], "generated_at": generated,
             "features": features}
+
+
+def _str_or_none(value) -> str | None:
+    return value if isinstance(value, str) and value else None
 
 
 def attribution(bdl_source: dict, generated: str) -> dict:
@@ -139,25 +143,40 @@ def region_stats(cells: pd.DataFrame) -> dict:
     }
 
 
-def control_places(cells: pd.DataFrame) -> list[dict]:
-    """Cells the owner can check by hand: best forest, a reserve, a military area, a non-LP forest."""
+def control_places(cells: pd.DataFrame, named: list[dict]) -> list[dict]:
+    """Cells the owner can check by hand: named places, best forest, a reserve, a military area, a non-LP forest."""
     picks = []
+    for place in named:
+        dist = (cells["lat"] - place["lat"]) ** 2 + ((cells["lon"] - place["lon"]) * 0.62) ** 2
+        row = cells.loc[dist.idxmin()]
+        picks.append((row, place["name"], _describe(row)))
     full = cells[(cells["forest_ha"] >= 60) & ~cells["banned"] & ~cells["private_maybe"]]
     if not full.empty:
         best = full.sort_values(["h_max", "forest_ha"], ascending=False).iloc[0]
-        picks.append((best, "Najwyższy potencjał", f"H_max {best.h_max:.2f}, {best.trees}"))
+        picks.append((best, "Najwyższy potencjał", _describe(best)))
     for label, reason in [("Rezerwat przyrody", "rezerwat przyrody"), ("Teren wojskowy", "teren wojskowy"),
                           ("Uprawa leśna", "uprawa leśna (młodnik do ok. 4 m)")]:
         sel = cells[cells["banned"] & cells["ban_reasons"].map(lambda r, reason=reason: bool(r) and r[0] == reason)]
         if not sel.empty:
             row = sel.sort_values(["ban_share", "forest_ha"], ascending=False).iloc[0]
-            picks.append((row, label, f"szara: {row.ban_share:.0%} lasu w masce"))
+            picks.append((row, label, _describe(row)))
     priv = cells[cells["private_maybe"] & ~cells["banned"]]
     if not priv.empty:
         row = priv.sort_values("forest_ha", ascending=False).iloc[0]
-        picks.append((row, "Las poza Lasami Państwowymi", f"{row.non_lp_share:.0%} lasu spoza BDL"))
+        picks.append((row, "Las poza Lasami Państwowymi", _describe(row)))
     return [{"id": r.cell, "lat": round(r.lat, 5), "lon": round(r.lon, 5), "label": label, "why": why}
             for r, label, why in picks]
+
+
+def _describe(row) -> str:
+    if row.banned:
+        return f"szara: {row.ban_share:.0%} lasu w masce".replace("%", " %")
+    text = f"H_max {row.h_max:.2f}".replace(".", ",")
+    if _str_or_none(row.trees):
+        text += f", {row.trees}"
+    if row.private_maybe:
+        text += f", {row.non_lp_share:.0%} lasu spoza LP".replace("%", " %")
+    return text
 
 
 def summary(cells: pd.DataFrame, species: list[str]) -> None:

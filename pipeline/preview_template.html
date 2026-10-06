@@ -88,16 +88,16 @@ select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); o
         <div class="key"><span class="sw private"></span>Głównie las poza Lasami Państwowymi: może być prywatny</div>
       </div>
     </section>
-    <section>
-      <h2>Region</h2>
-      <dl class="stats" id="stats"></dl>
+    <section class="card" id="card" aria-live="polite">
+      <p class="sub">Kliknij heksagon na mapie albo miejsce kontrolne, żeby zobaczyć kartę komórki.</p>
     </section>
     <section>
       <h2>Miejsca kontrolne</h2>
       <div class="places" id="places"></div>
     </section>
-    <section class="card" id="card" aria-live="polite">
-      <p class="sub">Kliknij heksagon na mapie, żeby zobaczyć jego kartę.</p>
+    <section>
+      <h2>Region</h2>
+      <dl class="stats" id="stats"></dl>
     </section>
     <p class="note">To potencjał lasu, nie prognoza. Pogoda dojdzie w etapie 2. Aplikacja nie rozpoznaje grzybów i nie ocenia ich jadalności.<br>
     Dane: Bank Danych o Lasach (Lasy Państwowe, pobrano __BDL_DATE__), GDOŚ (pobrano __GDOS_DATE__), © autorzy OpenStreetMap (ODbL).</p>
@@ -184,6 +184,8 @@ function select(feature) {
   selected = feature.properties.id;
   map.setFeatureState({ source: "cells", id: selected }, { sel: true });
   renderCard(feature.properties);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("card").scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
 }
 for (const layer of ["cells", "banned"]) {
   map.on("click", layer, (e) => select(e.features[0]));

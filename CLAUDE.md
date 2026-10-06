@@ -63,7 +63,7 @@ Pełne prompty etapów: `docs/PROMPTY.md`. Status etapów:
 | Etap | Status |
 |---|---|
 | 0 | zrobiony |
-| 1 | w toku (łódzkie) |
+| 1 | zrobiony (łódzkie), czeka na akceptację |
 | 2–6 | nie rozpoczęte |
 
 ## Uwagi o środowisku

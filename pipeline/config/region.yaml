@@ -6,3 +6,7 @@ voivodeships:
 # Geofabrik extract paths used by the OSM workflow (.github/workflows/osm-extract.yml).
 geofabrik:
   - europe/poland/lodzkie
+# Known places shown as control points in the preview (nearest forest cell is used).
+control_places:
+  - {name: "Lasy Spalskie (Spała)", lat: 51.545, lon: 20.135}
+  - {name: "Las Łagiewnicki (Łódź)", lat: 51.835, lon: 19.475}

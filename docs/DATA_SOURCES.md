@@ -45,7 +45,12 @@ Not available in WFS: **ownership** (layers contain only State Forests / LP), **
 
 `BDL:Nadleśnictwa` fields: `adress_forest`, `a_year`, `inspectorate_name`, `region_cd`, `inspectorate_cd`.
 
-### Volume for the pilot region (lubuskie + wielkopolskie, bbox hits)
+### Volume for łódzkie (current pilot region, 2026-10-06)
+
+Bbox hits: Łódź 105 583, Radom 32 875, Poznań 27 269, Katowice 23 088, Warszawa 168.
+107 583 stands intersect the voivodeship polygon. Full download with 5000-feature pages: ~2.5 min.
+
+### Volume for lubuskie + wielkopolskie (original plan, bbox hits)
 
 Piła 115 964, Poznań 166 013, Zielona Góra 186 307, Szczecin 181 667, Wrocław 113 707, Toruń 107 029,
 Szczecinek 38 554, Łódź 24 202, Gdańsk 1 724, Katowice 979, i.e. ~936k features in the bounding box.
@@ -59,5 +64,14 @@ The real region polygon is smaller. Approx. 0.9 kB GeoJSON per feature.
 | `tiles.openfreemap.org` | OK | |
 | `raw.githubusercontent.com`, `media.githubusercontent.com` | OK | geoBoundaries POL ADM1 (OSM-derived, ODbL, 2017 boundaries) used for the region outline |
 | `sdi.gdos.gov.pl` | blocked by GDOŚ bot filter | files downloaded by hand: `data/manual/gdos/` |
-| `download.geofabrik.de`, `overpass-api.de` | connection reset | OSM data needs another route |
+| `download.geofabrik.de`, `overpass-api.de` | connection reset | OSM layers come from `.github/workflows/osm-extract.yml` (GitHub Actions) |
 | `mapserver.bdl.lasy.gov.pl` (BDL WMS) | not on the allow-list | needed in stage 6 |
+
+## OSM extract (GitHub Actions, verified 2026-10-06)
+
+GDAL's OSM driver puts common keys (`landuse`, `natural`, `military`, …) into their own columns and the rest into
+`other_tags` (hstore text). `-select` must therefore list `military` explicitly, otherwise the value is lost.
+Do not use `ogr2ogr -where` on the OSM driver; filter in Python (`pipeline/sources/osm.py`).
+
+Łódzkie: 131 military polygons (of which 40 count as no-entry: `landuse=military` or area-type `military=*`;
+64 are single bunkers), 64 442 forest/wood polygons (~3 700 km²).
