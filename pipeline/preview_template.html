@@ -1,0 +1,228 @@
+<title>Potencjał lasów łódzkich</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>/*__MAPLIBRE_CSS__*/</style>
+<style>
+/* Layout: full-height map with a side panel (bottom sheet on phones); the panel reads like a forester's stand card. */
+:root {
+  --bg: #f3f4ee; --panel: #fbfbf7; --fg: #1d2a22; --muted: #5d6b61; --line: #d6dccf;
+  --accent: #2f6b45; --banned: #8b908c; --banned-line: #505652; --private: #8a5a1c;
+  --h0: #eef0d8; --h1: #cfe0a1; --h2: #8fc06e; --h3: #3f8f55; --h4: #145238;
+  --font-ui: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121814; --panel: #19211c; --fg: #e3e9df; --muted: #9aa89d; --line: #2e3a32;
+  --accent: #8cc79c; --banned: #6c726e; --banned-line: #a3aaa5; --private: #e0a95c;
+  --h0: #2a3326; --h1: #4d6b35; --h2: #6f9e4c; --h3: #9fcf6f; --h4: #d9f2a6; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #121814; --panel: #19211c; --fg: #e3e9df; --muted: #9aa89d; --line: #2e3a32;
+  --accent: #8cc79c; --banned: #6c726e; --banned-line: #a3aaa5; --private: #e0a95c;
+  --h0: #2a3326; --h1: #4d6b35; --h2: #6f9e4c; --h3: #9fcf6f; --h4: #d9f2a6; color-scheme: dark }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 15px; }
+.app { display: grid; grid-template-columns: minmax(0, 1fr) 360px; height: 100%; }
+#map { min-height: 0; background: var(--bg); }
+.panel { background: var(--panel); border-left: 1px solid var(--line); overflow-y: auto; padding: 18px 20px 28px;
+  display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+h1 { font-size: 1.35rem; font-weight: 600; margin: 0; text-wrap: balance; line-height: 1.2; }
+h2 { font-size: .78rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+p { margin: 0; line-height: 1.45; }
+.sub { color: var(--muted); font-size: .9rem; }
+label.sel { display: flex; flex-direction: column; gap: 6px; font-size: .9rem; }
+select { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); color: var(--fg); }
+select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.ramp { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; }
+.ramp span { height: 12px; }
+.ramp-labels { display: flex; justify-content: space-between; font-family: var(--font-data); font-size: .75rem; color: var(--muted); margin-top: 4px; }
+.keys { display: grid; gap: 6px; margin-top: 10px; font-size: .9rem; }
+.key { display: flex; align-items: center; gap: 8px; }
+.sw { width: 18px; height: 12px; flex: none; }
+.sw.banned { background: var(--banned); outline: 1px solid var(--banned-line); }
+.sw.private { border: 2px dashed var(--private); height: 10px; }
+.stats { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; font-size: .9rem; }
+.stats dd { margin: 0; font-family: var(--font-data); font-variant-numeric: tabular-nums; text-align: right; }
+.stats dt { color: var(--muted); }
+.places { display: grid; gap: 6px; }
+.places button { font: inherit; text-align: left; background: none; color: var(--fg); border: 1px solid var(--line); border-radius: 6px;
+  padding: 8px 10px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; }
+.places button:hover { border-color: var(--accent); }
+.places small { color: var(--muted); }
+.card { border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 10px; }
+.card .status { font-weight: 600; }
+.card .status.banned { color: var(--banned-line); }
+.card .status.private { color: var(--private); }
+.bars { display: grid; grid-template-columns: 6.5em minmax(0, 1fr) 2.8em; gap: 4px 8px; align-items: center; font-size: .88rem; }
+.bars .track { height: 8px; background: var(--h0); border-radius: 2px; overflow: hidden; }
+.bars .fill { height: 100%; background: var(--h3); }
+.bars .v { font-family: var(--font-data); font-size: .8rem; text-align: right; font-variant-numeric: tabular-nums; }
+.mono { font-family: var(--font-data); font-size: .8rem; color: var(--muted); word-break: break-all; }
+.note { font-size: .82rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 12px; }
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; grid-template-rows: minmax(0, 58%) minmax(0, 42%); }
+  .panel { border-left: 0; border-top: 1px solid var(--line); padding-inline: 16px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+.maplibregl-popup { display: none; }
+</style>
+
+<div class="app">
+  <div id="map" role="region" aria-label="Mapa komórek lasu"></div>
+  <aside class="panel">
+    <div>
+      <h1>Potencjał lasów łódzkich</h1>
+      <p class="sub">Etap 1 · heksagony H3 (ok. 0,7 km²) · parametry __PARAMS__ · dane z __GENERATED__</p>
+    </div>
+    <label class="sel" for="species">Gatunek grzyba
+      <select id="species">
+        <option value="h_max">Wszystkie (najlepszy gatunek, H_max)</option>
+      </select>
+    </label>
+    <section>
+      <h2>Potencjał siedliska H</h2>
+      <div class="ramp" aria-hidden="true"><span style="background:var(--h0)"></span><span style="background:var(--h1)"></span><span style="background:var(--h2)"></span><span style="background:var(--h3)"></span><span style="background:var(--h4)"></span></div>
+      <div class="ramp-labels"><span>0,0</span><span>0,2</span><span>0,4</span><span>0,6</span><span>0,8</span><span>1,0</span></div>
+      <div class="keys">
+        <div class="key"><span class="sw banned"></span>Zakaz wstępu lub zbioru (szare zawsze)</div>
+        <div class="key"><span class="sw private"></span>Głównie las poza Lasami Państwowymi: może być prywatny</div>
+      </div>
+    </section>
+    <section>
+      <h2>Region</h2>
+      <dl class="stats" id="stats"></dl>
+    </section>
+    <section>
+      <h2>Miejsca kontrolne</h2>
+      <div class="places" id="places"></div>
+    </section>
+    <section class="card" id="card" aria-live="polite">
+      <p class="sub">Kliknij heksagon na mapie, żeby zobaczyć jego kartę.</p>
+    </section>
+    <p class="note">To potencjał lasu, nie prognoza. Pogoda dojdzie w etapie 2. Aplikacja nie rozpoznaje grzybów i nie ocenia ich jadalności.<br>
+    Dane: Bank Danych o Lasach (Lasy Państwowe, pobrano __BDL_DATE__), GDOŚ (pobrano __GDOS_DATE__), © autorzy OpenStreetMap (ODbL).</p>
+  </aside>
+</div>
+
+<script>
+const DATA = /*__CELLS__*/null;
+const REGION = /*__REGION__*/null;
+const PLACES = /*__PLACES__*/[];
+const STATS = /*__STATS__*/{};
+const SPECIES = { borowik: "Borowik", podgrzybek: "Podgrzybek", kozlarz: "Koźlarz", maslak: "Maślak", kurka: "Kurka",
+  rydz: "Rydz", kania: "Kania", opienka: "Opieńka", gaska: "Gąska" };
+const HAB = { BS: "bór suchy", "BŚW": "bór świeży", BW: "bór wilgotny", BB: "bór bagienny", "BMŚW": "bór mieszany świeży",
+  BMW: "bór mieszany wilgotny", BMB: "bór mieszany bagienny", "LMŚW": "las mieszany świeży", LMW: "las mieszany wilgotny",
+  LMB: "las mieszany bagienny", "LŚW": "las świeży", LW: "las wilgotny", OL: "ols", OLJ: "ols jesionowy", "LŁ": "las łęgowy" };
+const TREES = { So: "sosna", "Św": "świerk", Jd: "jodła", Md: "modrzew", Bk: "buk", Db: "dąb", Brz: "brzoza", Gb: "grab",
+  Os: "osika", Tp: "topola", Ol: "olsza", inne: "inne" };
+const fmt = (v, d = 2) => v.toLocaleString("pl-PL", { minimumFractionDigits: d, maximumFractionDigits: d });
+const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+for (const f of DATA.features) {
+  for (const [k, v] of Object.entries(f.properties.h)) f.properties["h_" + k] = v;
+}
+const sel = document.getElementById("species");
+for (const [k, v] of Object.entries(SPECIES)) sel.add(new Option(v, "h_" + k));
+
+const stats = document.getElementById("stats");
+for (const [k, v] of Object.entries(STATS)) stats.insertAdjacentHTML("beforeend", `<dt>${k}</dt><dd>${v}</dd>`);
+
+function colorExpr(field) {
+  return ["step", ["get", field], css("--h0"), 0.2, css("--h1"), 0.4, css("--h2"), 0.6, css("--h3"), 0.8, css("--h4")];
+}
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": css("--bg") } }] },
+  bounds: REGION.bbox, fitBoundsOptions: { padding: 24 }, attributionControl: false,
+});
+map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-left");
+map.addControl(new maplibregl.AttributionControl({ compact: true,
+  customAttribution: "BDL Lasy Państwowe · GDOŚ · © OpenStreetMap (ODbL)" }));
+
+map.on("load", () => {
+  map.addSource("region", { type: "geojson", data: REGION.geojson });
+  map.addSource("cells", { type: "geojson", data: DATA, promoteId: "id" });
+  map.addLayer({ id: "region-fill", type: "fill", source: "region", paint: { "fill-color": css("--panel"), "fill-opacity": 0.6 } });
+  map.addLayer({ id: "cells", type: "fill", source: "cells", filter: ["!", ["get", "banned"]],
+    paint: { "fill-color": colorExpr("h_max"), "fill-opacity": 0.92 } });
+  map.addLayer({ id: "banned", type: "fill", source: "cells", filter: ["get", "banned"],
+    paint: { "fill-color": css("--banned"), "fill-opacity": 0.95 } });
+  map.addLayer({ id: "banned-line", type: "line", source: "cells", filter: ["get", "banned"],
+    paint: { "line-color": css("--banned-line"), "line-width": 0.6 } });
+  map.addLayer({ id: "private", type: "line", source: "cells", filter: ["all", ["get", "private_maybe"], ["!", ["get", "banned"]]],
+    minzoom: 9, paint: { "line-color": css("--private"), "line-width": 1.2, "line-dasharray": [2, 1.5] } });
+  map.addLayer({ id: "selected", type: "line", source: "cells",
+    paint: { "line-color": css("--fg"), "line-width": ["case", ["boolean", ["feature-state", "sel"], false], 2.5, 0] } });
+  map.addLayer({ id: "region-line", type: "line", source: "region", paint: { "line-color": css("--muted"), "line-width": 1.2 } });
+  tryBasemap();
+});
+
+// Basemap from OpenFreeMap when the page is opened from disk; inside a sandbox that blocks it, the map stays plain.
+async function tryBasemap() {
+  try {
+    const style = await (await fetch("https://tiles.openfreemap.org/styles/positron")).json();
+    for (const [id, src] of Object.entries(style.sources)) map.addSource("bm-" + id, src);
+    if (style.glyphs) map.setGlyphs(style.glyphs);
+    if (style.sprite) map.setSprite(style.sprite);
+    for (const layer of style.layers) {
+      if (layer.type === "background") continue;
+      const l = { ...layer, id: "bm-" + layer.id };
+      if (l.source) l.source = "bm-" + l.source;
+      map.addLayer(l, "region-fill");
+    }
+    map.setPaintProperty("region-fill", "fill-opacity", 0);
+  } catch (e) { /* offline or sandboxed: keep the plain background */ }
+}
+
+sel.addEventListener("change", () => map.setPaintProperty("cells", "fill-color", colorExpr(sel.value)));
+
+let selected = null;
+function select(feature) {
+  if (selected !== null) map.setFeatureState({ source: "cells", id: selected }, { sel: false });
+  selected = feature.properties.id;
+  map.setFeatureState({ source: "cells", id: selected }, { sel: true });
+  renderCard(feature.properties);
+}
+for (const layer of ["cells", "banned"]) {
+  map.on("click", layer, (e) => select(e.features[0]));
+  map.on("mouseenter", layer, () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", layer, () => (map.getCanvas().style.cursor = ""));
+}
+
+function renderCard(p) {
+  const h = typeof p.h === "string" ? JSON.parse(p.h) : p.h;
+  const reasons = typeof p.ban_reasons === "string" ? JSON.parse(p.ban_reasons) : (p.ban_reasons || []);
+  let status = `<p class="status">Wstęp dozwolony (las państwowy)</p>`;
+  if (p.banned) status = `<p class="status banned">Zakaz: ${reasons.join(", ") || "obszar chroniony"} (${fmt(p.ban_share * 100, 0)}% lasu w komórce)</p>`;
+  else if (p.private_maybe) status = `<p class="status private">Głównie las poza Lasami Państwowymi (${fmt(p.non_lp_share * 100, 0)}%): może być prywatny, sprawdź tablice</p>`;
+  else if (reasons.length) status += `<p class="sub">Częściowo: ${reasons.join(", ")} (${fmt(p.ban_share * 100, 0)}% lasu)</p>`;
+  const rows = Object.entries(h).sort((a, b) => b[1] - a[1]).map(([k, v]) =>
+    `<span>${SPECIES[k]}</span><span class="track"><span class="fill" style="width:${v * 100}%"></span></span><span class="v">${fmt(v)}</span>`).join("");
+  const trees = p.trees ? p.trees.replace(/([A-Za-zŚśŁł]+) (\d+%)/g, (_, t, s) => `${TREES[t] || t} ${s}`) : "brak danych BDL";
+  const facts = [
+    ["Las w komórce", `${fmt(p.forest_ha, 1)} ha`],
+    ["Drzewostan", trees],
+    ["Średni wiek", p.age != null ? `${p.age} lat` : "brak danych"],
+    ["Siedlisko", p.habitat ? `${HAB[p.habitat] || p.habitat} (${p.habitat})` : "brak danych"],
+  ].map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("");
+  document.getElementById("card").innerHTML = `
+    <h2>Karta komórki</h2>${status}
+    <dl class="stats">${facts}</dl>
+    <div><h2>Potencjał H per gatunek</h2><div class="bars">${rows}</div></div>
+    <p class="mono">H3 ${p.id} · punkt pogodowy ${p.pt}</p>`;
+}
+
+const places = document.getElementById("places");
+for (const pl of PLACES) {
+  const b = document.createElement("button");
+  b.innerHTML = `<span>${pl.label}</span><small>${pl.why}</small>`;
+  b.addEventListener("click", () => {
+    const f = DATA.features.find((x) => x.properties.id === pl.id);
+    map.flyTo({ center: [pl.lon, pl.lat], zoom: 12 });
+    if (f) select(f);
+  });
+  places.append(b);
+}
+</script>

@@ -1,0 +1,122 @@
+# Model parameters: 1:1 mirror of docs/SPEC.md (chapter 7 and tables 3.2-3.4).
+# STARTING VALUES FOR CALIBRATION. Change here AND in SPEC.md, and bump params_version.
+params_version: "0.2.0"
+
+species: [borowik, podgrzybek, kozlarz, maslak, kurka, rydz, kania, opienka, gaska]
+weather_variant:
+  borowik: myc
+  podgrzybek: myc
+  kozlarz: myc
+  maslak: myc
+  kurka: myc
+  rydz: myc
+  kania: myc
+  opienka: frost
+  gaska: frost
+
+# ---------------- H (habitat potential) ----------------
+h3_resolution: 8
+crop_age_max: 10            # stands up to this age = forest crop (<4 m): H = 0 and banned
+ban_share_threshold: 0.5    # cell is banned when > this share of its forest is masked
+min_cell_forest_m2: 10000   # cells with less forest are dropped
+hab_default: 0.5
+h_cell_aggregation: area_weighted_mean
+
+# BDL species code prefix (part before ".") -> tree group used below.
+tree_code_map:
+  SO: So
+  ŚW: Św
+  JD: Jd
+  MD: Md
+  BK: Bk
+  DB: Db
+  BRZ: Brz
+  GB: Gb
+  OS: Os
+  TP: Tp
+  OL: Ol
+
+# Table 3.2: tree suitability per mushroom species. Missing groups -> "inne".
+tree:
+  borowik:    {So: 1.0, Św: 1.0, Jd: 0.8, Md: 0.5, Bk: 1.0, Db: 1.0, Brz: 0.6, Gb: 0.6, Os: 0.4, Tp: 0.3, Ol: 0.1, inne: 0.3}
+  podgrzybek: {So: 1.0, Św: 1.0, Jd: 0.7, Md: 0.5, Bk: 0.4, Db: 0.4, Brz: 0.3, Gb: 0.2, Os: 0.2, Tp: 0.1, Ol: 0.1, inne: 0.2}
+  kozlarz:    {So: 0.2, Św: 0.2, Jd: 0.1, Md: 0.1, Bk: 0.2, Db: 0.3, Brz: 1.0, Gb: 0.6, Os: 0.8, Tp: 0.7, Ol: 0.2, inne: 0.2}
+  maslak:     {So: 1.0, Św: 0.1, Jd: 0.1, Md: 1.0, Bk: 0.1, Db: 0.1, Brz: 0.1, Gb: 0.1, Os: 0.1, Tp: 0.1, Ol: 0.1, inne: 0.1}
+  kurka:      {So: 1.0, Św: 1.0, Jd: 0.7, Md: 0.5, Bk: 0.8, Db: 0.8, Brz: 0.5, Gb: 0.6, Os: 0.3, Tp: 0.2, Ol: 0.1, inne: 0.3}
+  rydz:       {So: 1.0, Św: 0.8, Jd: 0.3, Md: 0.2, Bk: 0.1, Db: 0.1, Brz: 0.1, Gb: 0.1, Os: 0.1, Tp: 0.1, Ol: 0.1, inne: 0.1}
+  kania:      {So: 0.7, Św: 0.6, Jd: 0.6, Md: 0.6, Bk: 0.6, Db: 0.8, Brz: 0.8, Gb: 0.6, Os: 0.6, Tp: 0.6, Ol: 0.3, inne: 0.6}
+  opienka:    {So: 0.7, Św: 1.0, Jd: 0.8, Md: 0.7, Bk: 1.0, Db: 1.0, Brz: 0.8, Gb: 0.8, Os: 0.8, Tp: 0.8, Ol: 0.6, inne: 0.7}
+  gaska:      {So: 1.0, Św: 0.7, Jd: 0.3, Md: 0.2, Bk: 0.1, Db: 0.1, Brz: 0.1, Gb: 0.1, Os: 0.1, Tp: 0.1, Ol: 0.1, inne: 0.1}
+
+# Table 3.3: age suitability nodes [age_years, value]; linear between nodes, constant outside.
+age_nodes:
+  borowik:    [[10, 0.3], [15, 0.6], [30, 1.0], [80, 1.0], [120, 0.7]]
+  podgrzybek: [[20, 0.3], [50, 1.0]]
+  kozlarz:    [[5, 0.5], [10, 1.0], [50, 1.0], [80, 0.6]]
+  maslak:     [[5, 1.0], [25, 1.0], [40, 0.6], [60, 0.3]]
+  kurka:      [[20, 0.4], [40, 1.0]]
+  rydz:       [[10, 1.0], [40, 1.0], [60, 0.5]]
+  kania:      [[0, 1.0]]
+  opienka:    [[20, 0.4], [60, 1.0]]
+  gaska:      [[15, 0.4], [30, 1.0]]
+
+# Table 3.4: forest site type suitability (BDL codes, uppercase). Missing codes -> hab_default.
+habitat:
+  borowik:    {BS: 0.6, BŚW: 1.0, BW: 0.7, BB: 0.2, BMŚW: 1.0, BMW: 0.7, BMB: 0.2, LMŚW: 1.0, LMW: 0.6, LMB: 0.2, LŚW: 0.7, LW: 0.4, OL: 0.2, OLJ: 0.2, LŁ: 0.2}
+  podgrzybek: {BS: 0.7, BŚW: 1.0, BW: 0.9, BB: 0.3, BMŚW: 1.0, BMW: 0.9, BMB: 0.3, LMŚW: 0.7, LMW: 0.5, LMB: 0.2, LŚW: 0.4, LW: 0.3, OL: 0.1, OLJ: 0.1, LŁ: 0.1}
+  kozlarz:    {BS: 0.4, BŚW: 0.8, BW: 1.0, BB: 0.6, BMŚW: 0.8, BMW: 1.0, BMB: 0.6, LMŚW: 0.8, LMW: 1.0, LMB: 0.6, LŚW: 0.6, LW: 0.8, OL: 0.5, OLJ: 0.5, LŁ: 0.5}
+  maslak:     {BS: 1.0, BŚW: 1.0, BW: 0.7, BB: 0.2, BMŚW: 0.8, BMW: 0.6, BMB: 0.2, LMŚW: 0.4, LMW: 0.3, LMB: 0.1, LŚW: 0.2, LW: 0.1, OL: 0.1, OLJ: 0.1, LŁ: 0.1}
+  kurka:      {BS: 0.6, BŚW: 1.0, BW: 0.8, BB: 0.2, BMŚW: 1.0, BMW: 0.8, BMB: 0.2, LMŚW: 0.8, LMW: 0.6, LMB: 0.2, LŚW: 0.6, LW: 0.4, OL: 0.1, OLJ: 0.1, LŁ: 0.1}
+  rydz:       {BS: 1.0, BŚW: 1.0, BW: 0.6, BB: 0.1, BMŚW: 0.7, BMW: 0.5, BMB: 0.1, LMŚW: 0.3, LMW: 0.2, LMB: 0.1, LŚW: 0.2, LW: 0.1, OL: 0.1, OLJ: 0.1, LŁ: 0.1}
+  kania:      {BS: 0.6, BŚW: 0.8, BW: 0.4, BB: 0.1, BMŚW: 1.0, BMW: 0.4, BMB: 0.1, LMŚW: 1.0, LMW: 0.4, LMB: 0.1, LŚW: 1.0, LW: 0.4, OL: 0.1, OLJ: 0.1, LŁ: 0.2}
+  opienka:    {BS: 0.3, BŚW: 0.6, BW: 0.6, BB: 0.3, BMŚW: 0.8, BMW: 0.8, BMB: 0.4, LMŚW: 1.0, LMW: 1.0, LMB: 0.5, LŚW: 1.0, LW: 0.9, OL: 0.6, OLJ: 0.6, LŁ: 0.7}
+  gaska:      {BS: 1.0, BŚW: 1.0, BW: 0.5, BB: 0.1, BMŚW: 0.6, BMW: 0.4, BMB: 0.1, LMŚW: 0.3, LMW: 0.2, LMB: 0.1, LŚW: 0.2, LW: 0.1, OL: 0.1, OLJ: 0.1, LŁ: 0.1}
+
+# Forests outside the State Forests (from OSM, no stand data). SPEC 3.5.
+non_lp:
+  leaf_type_trees:          # OSM leaf_type -> tree mix [group, share]
+    needleleaved: [[So, 1.0]]
+    broadleaved: [[Db, 0.5], [Brz, 0.5]]
+    mixed: [[So, 0.5], [Db, 0.25], [Brz, 0.25]]
+    unknown: [[So, 0.6], [Db, 0.2], [Brz, 0.2]]
+  age_factor: 0.7           # unknown age
+  min_area_m2: 5000         # ignore smaller patches
+
+# Legal mask from BDL protective categories (art. 26 ustawy o lasach: permanent entry ban).
+bdl_ban_prot_categ: ["OCH OSTOJ", "OCH NAS", "OCH BADAW"]
+bdl_ban_forest_fun: ["REZ"]
+
+# ---------------- W (weather) ----------------
+weather_grid_deg: 0.1
+api_window_days: 30
+api_decay: 0.9
+api_center_mm: 25
+api_scale_mm: 8
+balance_window_days: 14
+balance_scale_mm: 10
+sm_depth_cm: [0, 28]
+sm_climatology_years: 10
+m_weights: {api: 0.4, balance: 0.3, sm: 0.3}
+trigger_min_mm: 10
+trigger_sat_mm: 25
+lag_kernel_nodes: [[3, 0.0], [5, 0.3], [8, 0.8], [10, 1.0], [14, 0.7], [21, 0.2], [28, 0.0]]
+lag_max_days: 28
+t_window_days: 5
+t_opt: 14
+t_width: 5
+heat_dry_t5: 17.5
+heat_dry_p5_mm: 1
+frost_tmin: 0
+frost_nights_min: 2
+frost_nights_window: 3
+frost_mult: {myc: 0.3, frost: 0.7}
+season_s: {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.1, 5: 0.3, 6: 0.5, 7: 0.7, 8: 1.0, 9: 1.0, 10: 0.9, 11: 0.4, 12: 0.0}
+w_weights: {m: 0.5, l: 0.5}
+
+# ---------------- IG and colours ----------------
+ig_base: 0.4
+ig_h_weight: 0.6
+color_green_min: 60
+color_yellow_min: 35
+forecast_days: 14
+uncertain_from_day: 8

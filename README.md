@@ -7,7 +7,7 @@ Prywatna aplikacja mobilna (Android + iOS), która pokazuje na mapie lasy w Pols
 - 🔴 **< 35**: nie warto,
 - ⬜ **szary**: brak wstępu lub zakaz zbioru (park narodowy, rezerwat, poligon, uprawa leśna).
 
-Indeks łączy **potencjał lasu** (gatunek, wiek i siedlisko drzewostanu z Banku Danych o Lasach) z **pogodą** z ostatnich tygodni i prognozą na 14 dni (Open-Meteo). Region startowy: lubuskie i wielkopolskie.
+Indeks łączy **potencjał lasu** (gatunek, wiek i siedlisko drzewostanu z Banku Danych o Lasach) z **pogodą** z ostatnich tygodni i prognozą na 14 dni (Open-Meteo). Region startowy: województwo łódzkie (kolejne będą dochodzić z czasem).
 
 > Aplikacja **nie rozpoznaje grzybów i nie ocenia ich jadalności**. W razie wątpliwości skonsultuj się z grzyboznawcą.
 
@@ -26,7 +26,26 @@ Indeks łączy **potencjał lasu** (gatunek, wiek i siedlisko drzewostanu z Bank
 
 ## Status
 
-Etap 0 (setup i specyfikacja) zrobiony. Plan wszystkich etapów jest w `CLAUDE.md`.
+Etap 0 (setup i specyfikacja) zrobiony, etap 1 (dane o lasach, łódzkie) w toku. Plan wszystkich etapów jest w `CLAUDE.md`.
+
+## Jak zbudować dane o lasach (etap 1)
+
+```bash
+pip install -r pipeline/requirements.txt
+python -m pipeline.build_static      # pobiera BDL (z cache), liczy heksagony, zapisuje data/static/ i podgląd
+python -m pytest pipeline/tests      # testy funkcji przydatności
+```
+
+Wynik:
+
+| Plik | Co zawiera |
+|---|---|
+| `data/static/cells.geojson` | heksagony lasu z potencjałem H dla 9 gatunków, flagami prawnymi i opisem drzewostanu |
+| `data/static/cells_meta.json` | środki heksagonów i przypisany punkt siatki pogodowej 0,1° (dla etapu 2) |
+| `data/static/attribution.json` | źródła danych, licencje i daty pobrania |
+| `data/preview/preview.html` | mapa podglądowa do otwarcia w przeglądarce |
+
+Region ustawia `pipeline/config/region.yaml`, parametry modelu `pipeline/config/model_params.yaml` (lustro tabeli z `docs/SPEC.md`). Dane OpenStreetMap przygotowuje automat na GitHubie (`.github/workflows/osm-extract.yml`), bo środowisko w chmurze nie łączy się z serwerami OSM.
 
 ## Źródła danych i atrybucje
 

@@ -5,6 +5,7 @@ pyogrio
 pyproj
 h3
 requests
+pyyaml
 numpy
 pandas
 pytest

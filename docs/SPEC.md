@@ -1,6 +1,6 @@
 # SPEC: Indeks Grzybowy (IG)
 
-Wersja specyfikacji: **0.1** · wersja parametrów modelu: **`params_version = "0.1.0"`**
+Wersja specyfikacji: **0.2** (etap 1: dane BDL i region łódzkie) · wersja parametrów modelu: **`params_version = "0.2.0"`** (0.2.0: parametry lasów spoza LP i maski z BDL, etap 1)
 
 Źródło: `docs/research.md`, sekcje 1.3, 2.2 i 2.4 (wersja z przypisami: `docs/research_z_przypisami.md`).
 
@@ -96,10 +96,11 @@ Dla każdego wydzielenia BDL `e` i gatunku grzyba `g`:
 H_g(e) = suit_tree_g(e) · suit_age_g(wiek(e)) · suit_hab_g(siedlisko(e))
 ```
 
-- `suit_tree_g(e)`: jeśli BDL daje skład gatunkowy, to średnia ważona udziałem `Σ_i udział_i · tree_g(gatunek_i)` [P]; jeśli tylko gatunek panujący, to `tree_g(gatunek_panujący)`. Research mówi o „przydatności(gatunek panujący, domieszki)” bez wzoru.
+- `suit_tree_g(e) = u · tree_g(gatunek_panujący) + (1 − u) · tree_g(inne)`, gdzie `u` to udział gatunku panującego (`part_cd` w BDL, w dziesiątkach) [P]. BDL WFS nie podaje domieszek, więc reszta drzewostanu liczy się jako „inne”. Research mówi o „przydatności(gatunek panujący, domieszki)” bez wzoru.
+- Do H wchodzą tylko wydzielenia z `area_type = D-STAN` (drzewostan). Zręby, bagna, drogi, łąki itd. nie są lasem w sensie modelu.
 - `suit_age_g(a)`: funkcja odcinkowo-liniowa przez węzły z tabeli 3.3 (poza skrajnymi węzłami wartość stała).
 - `suit_hab_g(s)`: wartość z tabeli 3.4; siedlisko spoza tabeli → `hab_default`.
-- **Uprawa leśna** (młodnik do ok. 4 m): `H_g = 0` dla wszystkich gatunków [R]; i tak obowiązuje stały zakaz wstępu. Rozpoznanie w etapie 1: wiek ≤ `crop_age_max` albo opis w BDL.
+- **Uprawa leśna** (młodnik do ok. 4 m): `H_g = 0` dla wszystkich gatunków [R]; i tak obowiązuje stały zakaz wstępu. BDL WFS nie ma wysokości ani opisu „uprawa”, więc rozpoznajemy ją po wieku gatunku panującego: `spec_age ≤ crop_age_max` (10 lat) [P].
 
 Agregacja do komórki H3 (rozdzielczość 8, ok. 0,7 km²) [P]:
 
@@ -114,7 +115,7 @@ Interpretacja zapisu z researchu: „H_gat = max po gatunkach grzybów z [...]�
 
 ### 3.2 Przydatność drzew `tree_g` (gatunek drzewa → 0–1)
 
-Kody drzew wg skrótów LP. **Rzeczywiste kody i nazwy pól w BDL trzeba sprawdzić w etapie 1 (DescribeFeatureType), nie zgadywać.**
+Kody drzew wg skrótów LP. W BDL pole `species_cd` ma kody wielkimi literami, czasem z podgatunkiem po kropce (`DB.B`, `BRZ.O`); mapujemy po prefiksie (`tree_code_map` w configu). Opis pól: `docs/DATA_SOURCES.md`.
 
 | Drzewo | borowik | podgrzybek | koźlarz | maślak | kurka | rydz | kania | opieńka | gąska |
 |---|---|---|---|---|---|---|---|---|---|
@@ -176,6 +177,19 @@ Kody typów siedliskowych lasów nizinnych: Bs (bór suchy), Bśw (bór świeży
 [R] tylko dla borowika (Bśw/BMśw/LMśw = 1,0; Bb/Ol = 0,2). Reszta [P]: borowe i piaszczyste dla maślaka, rydza i gąski; wilgotne dla koźlarza; żyźniejsze, prześwietlone dla kani (unika wilgotnych i zakwaszonych gleb [R]); żyzne lasy dla opieńki. Siedliska górskie (np. BG, LMG, LG) dostają `hab_default` aż do rozszerzenia regionu poza niż.
 
 ---
+
+### 3.5 Lasy poza Lasami Państwowymi (etap 1)
+
+BDL WFS zawiera tylko lasy Lasów Państwowych. W łódzkim duża część lasów to lasy prywatne i gminne. Bierzemy je z OpenStreetMap (`landuse=forest`, `natural=wood`), odejmując wszystko, co jest w BDL [P]:
+
+```
+H_g(las spoza LP) = Σ_drzewa udział · tree_g(drzewo) · non_lp.age_factor · hab_default
+```
+
+- Mieszanka drzew z tagu OSM `leaf_type`: iglasty → sosna; liściasty → dąb 50% + brzoza 50%; mieszany → sosna 50%, dąb 25%, brzoza 25%; brak tagu → sosna 60%, dąb 20%, brzoza 20% (parametr `non_lp.leaf_type_trees`).
+- Wiek nieznany: czynnik `non_lp.age_factor = 0,7`. Siedlisko nieznane: `hab_default = 0,5`. Taki las ma więc H ≤ 0,35, czyli nigdy nie wygrywa z dobrze opisanym lasem państwowym. To celowe: mniej wiemy, mniej obiecujemy.
+- Pomijamy płaty mniejsze niż `non_lp.min_area_m2` (0,5 ha).
+- Komórka dostaje flagę **„prywatny, może być zakaz”**, gdy co najmniej 50% jej lasu leży poza BDL [P]. To przybliżenie: las spoza LP może też być gminny albo należeć do innego zarządcy.
 
 ## 4. Składowa pogodowa W ∈ [0, 100]
 
@@ -298,13 +312,16 @@ Komórka jest **zakazana (szara)**, gdy > `ban_share_threshold` = 50% [R z promp
 | Parki narodowe | GDOŚ (WFS/SHP) | zakaz (szary) |
 | Rezerwaty przyrody | GDOŚ (WFS/SHP) | zakaz (szary) |
 | Tereny wojskowe | OSM: `landuse=military`, `military=*` | zakaz (szary) |
-| Uprawy leśne do ok. 4 m | BDL (wiek / opis) | zakaz (szary), H = 0 |
-| Lasy prywatne | BDL (forma własności) | **flaga „prywatny, może być zakaz”**: ostrzeżenie, nie szary |
+| Uprawy leśne do ok. 4 m | BDL: `spec_age ≤ crop_age_max` | zakaz (szary), H = 0 |
+| Ostoje zwierząt, drzewostany nasienne, powierzchnie doświadczalne | BDL: `prot_categ` ∈ `OCH OSTOJ`, `OCH NAS`, `OCH BADAW` | zakaz (szary) |
+| Rezerwaty wg BDL | BDL: `forest_fun = REZ` | zakaz (szary), zapasowo obok GDOŚ |
+| Lasy poza Lasami Państwowymi | OSM minus BDL (rozdz. 3.5) | **flaga „prywatny, może być zakaz”**: ostrzeżenie, nie szary |
 | Okresowe zakazy wstępu, zagrożenie pożarowe | WMS BDL | etap 6: ostrzeżenie, a jeśli da się sprawdzić automatycznie, to szary |
 
 - **Otuliny** parków narodowych i rezerwatów **nie** wchodzą do maski. W plikach GDOŚ są w tej samej warstwie co park/rezerwat i różnią się tylko dopiskiem „ - otulina” w nazwie (23 z 46 obiektów w warstwie parków, 420 z 2146 w rezerwatach). Otulina to strefa buforowa, nie zakaz wstępu ani zbioru. Szczegóły odczytu: `data/manual/gdos/SOURCES.md`.
 - Parki krajobrazowe i obszary Natura 2000 **nie** oznaczają zakazu zbioru grzybów i nie wchodzą do maski [P, do potwierdzenia w etapie 1].
-- Stały zakaz obejmuje też drzewostany nasienne, ostoje zwierząt, źródliska i powierzchnie doświadczalne (art. 26 ustawy o lasach). Włączyć, jeśli BDL je udostępnia.
+- Stały zakaz obejmuje też drzewostany nasienne, ostoje zwierząt, źródliska i powierzchnie doświadczalne (art. 26 ustawy o lasach). BDL oznacza trzy z nich w `prot_categ` i te maskujemy. Innych kategorii ochronności (`OCH WOD` wodochronne, `OCH GLEB` glebochronne, `OCH MIAST` w obrębie miast, `OCH CENNE`) nie maskujemy, bo wstęp do nich jest dozwolony. Źródlisk BDL nie oznacza.
+- Komórka liczy udział zakazu z sumy: powierzchnia wydzieleń z zakazem (cała) + część pozostałego lasu leżąca w parkach, rezerwatach i terenach wojskowych.
 - GDOŚ zastrzega, że granice nie stanowią prawnego ustalenia; karta lasu powinna o tym wspominać.
 
 ---
@@ -315,7 +332,7 @@ To jedyne źródło prawdy dla liczb w modelu. W etapie 1–2 trafi 1:1 do pliku
 
 | Parametr | Wartość | Źródło | Gdzie |
 |---|---|---|---|
-| `params_version` | `"0.1.0"` | — | wszędzie |
+| `params_version` | `"0.2.0"` | — | wszędzie |
 | `h3_resolution` | 8 | prompt | H |
 | `crop_age_max` | 10 lat | [P] | H, maska |
 | `ban_share_threshold` | 0,5 | prompt | maska |
@@ -324,6 +341,13 @@ To jedyne źródło prawdy dla liczb w modelu. W etapie 1–2 trafi 1:1 do pliku
 | `age_nodes_g` | tabela 3.3 | [R]/[P] | H |
 | `hab_g(*)` | tabela 3.4 | [R]/[P] | H |
 | `h_cell_aggregation` | `"area_weighted_mean"` | [P] | H |
+| `min_cell_forest_m2` | 10 000 (1 ha) | [P] | H |
+| `tree_code_map` | prefiks kodu BDL → grupa drzew | DATA_SOURCES | H |
+| `non_lp.leaf_type_trees` | rozdz. 3.5 | [P] | H |
+| `non_lp.age_factor` | 0,7 | [P] | H |
+| `non_lp.min_area_m2` | 5 000 | [P] | H |
+| `bdl_ban_prot_categ` | `OCH OSTOJ`, `OCH NAS`, `OCH BADAW` | art. 26 | maska |
+| `bdl_ban_forest_fun` | `REZ` | [P] | maska |
 | `weather_grid_deg` | 0,1 | [R] | W |
 | `api_window_days` | 30 | [R] | M |
 | `api_decay` | 0,9 | [R] | M |
@@ -359,7 +383,7 @@ To jedyne źródło prawdy dla liczb w modelu. W etapie 1–2 trafi 1:1 do pliku
 
 ## 8. Otwarte kwestie (do rozstrzygnięcia w kolejnych etapach)
 
-1. **Etap 1:** rzeczywiste nazwy warstw i pól BDL (gatunek, skład, wiek, siedlisko, własność, uprawa) i czy WFS je daje. Bez tego tabela 3.2–3.4 nie ma do czego się podłączyć.
+1. ~~**Etap 1:** rzeczywiste nazwy warstw i pól BDL~~ Rozstrzygnięte: `docs/DATA_SOURCES.md`. WFS nie daje własności, wysokości ani domieszek.
 2. **Etap 1:** czy parki krajobrazowe, Natura 2000 lub użytki ekologiczne mają lokalne zakazy zbioru (domyślnie nie maskujemy).
 3. **Etap 2:** uzgodnienie warstw wilgotności gleby między prognozą a ERA5-Land (4.1).
 4. **Etap 2:** sposób liczenia `w_low`/`w_high` w limicie 10 000 wywołań/dobę (4.6).

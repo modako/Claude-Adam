@@ -37,15 +37,15 @@ Aplikacja mobilna (Android + iOS z jednego kodu) dla grzybiarzy w Polsce. Pokazu
 
 ## Region pilotażowy
 
-Województwa **lubuskie + wielkopolskie** (Puszcza Notecka, Barlinecka, Gorzowska). Rozszerzenie na kolejne województwa ma być zmianą w configu (etap 6).
+Województwo **łódzkie** (decyzja właściciela z 2026-10-06: tam mieszka; kolejne województwa będą dochodzić z czasem). Pierwotny plan z researchu zakładał lubuskie + wielkopolskie. Region ustawia `pipeline/config/region.yaml`; dodanie województwa ma być zmianą w tym pliku.
 
 ## Struktura repozytorium
 
 ```
 pipeline/   Python: pobieranie danych, obliczenia H i W, kalibracja
 app/        Expo / React Native (od etapu 3)
-data/       wygenerowane pliki (w .gitignore); małe pliki testowe w data/samples/
-docs/       research.md, research_z_przypisami.md, SPEC.md, PROMPTY.md
+data/       wygenerowane pliki (w .gitignore); małe pliki testowe w data/samples/; ręcznie pobrane źródła w data/manual/
+docs/       research.md, research_z_przypisami.md, SPEC.md, PROMPTY.md, DATA_SOURCES.md
 ```
 
 ## Plan etapów
@@ -62,8 +62,9 @@ Pełne prompty etapów: `docs/PROMPTY.md`. Status etapów:
 
 | Etap | Status |
 |---|---|
-| 0 | zrobiony, czeka na akceptację |
-| 1–6 | nie rozpoczęte |
+| 0 | zrobiony |
+| 1 | w toku (łódzkie) |
+| 2–6 | nie rozpoczęte |
 
 ## Uwagi o środowisku
 
@@ -71,5 +72,6 @@ Pełne prompty etapów: `docs/PROMPTY.md`. Status etapów:
 - Dostęp do sieci (stan na 2026-10-05, po dodaniu domen do dozwolonych w ustawieniach środowiska):
   - działa: `wfs.bdl.lasy.gov.pl`, `api.open-meteo.com`, `archive-api.open-meteo.com`, `tiles.openfreemap.org`, `www.gov.pl`, PyPI, npm;
   - `sdi.gdos.gov.pl`: serwer GDOŚ sam odrzuca chmurę (filtr Incapsula, 403). Pliki parków narodowych i rezerwatów pobrał ręcznie właściciel: `data/manual/gdos/` (opis w `SOURCES.md`). Nie próbuj pobierać ich automatycznie;
-  - `download.geofabrik.de`, `overpass-api.de`: połączenie zrywane po stronie serwera. Dane OSM trzeba pobrać inną drogą (do ustalenia w etapie 1).
+  - `download.geofabrik.de`, `overpass-api.de`: połączenie zrywane po stronie serwera. Dane OSM (lasy, tereny wojskowe) wyciąga workflow `.github/workflows/osm-extract.yml` na GitHub Actions i commituje do `data/manual/osm/`. Uruchamia się sam po zmianie `pipeline/config/region.yaml`;
+  - `cdnjs.cloudflare.com`, `unpkg.com`, `mapserver.bdl.lasy.gov.pl`: nie są na liście dozwolonych (pakiety JS bierzemy z npm).
 - Pliki źródłowe pobierane ręcznie trzymamy w `data/manual/` (wyjątek w `.gitignore`), razem ze źródłem, datą pobrania i sumą kontrolną.
